@@ -720,26 +720,27 @@
         function handleMotion(event) {
       if (!isTracking) return;
       const acc = event.accelerationIncludingGravity;
-      if (!acc || acc.y === null) return;
+      if (!acc || acc.x === null || acc.y === null || acc.z === null) return;
+      
       motionSeen = true;
 
-      // Берем ось Y (вертикальная, когда телефон перед лицом)
-      const yForce = Math.abs(acc.y);
+      // Считаем общую силу (Магнитуду). В покое она всегда ~9.8
+      const magnitude = Math.sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z);
       const now = Date.now();
 
-      // В покое Y ~ 9.2. При шаге подскакивает до 12-15.
-      // Настраиваем пороги под ваш телефон:
-      const STEP_THRESHOLD_HIGH = 12; // Подскок (вверх)
-      const STEP_THRESHOLD_LOW = 9;   // Приземление (вниз)
-
       // Выводим на экран для отладки
-      document.getElementById('status').textContent = `X: ${Math.abs(acc.x).toFixed(1)} | Y: ${Math.abs(acc.y).toFixed(1)} | Z: ${Math.abs(acc.z).toFixed(1)}`;
+      document.getElementById('status').textContent = `Магнитуда: ${magnitude.toFixed(1)}`;
 
-      if (yForce > STEP_THRESHOLD_HIGH && !isPeak) {
+      const STEP_THRESHOLD_HIGH = 11.0; // Порог подскока
+      const STEP_THRESHOLD_LOW = 8.5;   // Порог падения
+
+      if (magnitude > STEP_THRESHOLD_HIGH && !isPeak) {
         isPeak = true;
         lastStepTime = now;
-      } else if (yForce < STEP_THRESHOLD_LOW && isPeak) {
-        if (now - lastStepTime > MIN_STEP_INTERVAL) addStep();
+      } else if (magnitude < STEP_THRESHOLD_LOW && isPeak) {
+        if (now - lastStepTime > MIN_STEP_INTERVAL) {
+          addStep();
+        }
         isPeak = false;
       }
     }
