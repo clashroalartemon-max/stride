@@ -713,8 +713,8 @@
     let activeTimer = null;
     let wakeLock = null;
 
-    const STEP_THRESHOLD_HIGH = 8; // Резкий подскок (вверх)
-    const STEP_THRESHOLD_LOW = 4;   // Приземление (вниз)
+    const STEP_THRESHOLD_HIGH = 5; // Резкий подскок (вверх)
+    const STEP_THRESHOLD_LOW = 2;   // Приземление (вниз)
     const MIN_STEP_INTERVAL = 300;  // Минимум мс между шагами
 
     function handleMotion(event) {
