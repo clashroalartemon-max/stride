@@ -724,6 +724,7 @@
       motionSeen = true;
 
       const zForce = Math.abs(acc.z);
+      document.getElementById('status').textContent = 'Ускорение Z: ' + zForce.toFixed(2);
       const now = Date.now();
 
       if (zForce > STEP_THRESHOLD_HIGH && !isPeak) {
