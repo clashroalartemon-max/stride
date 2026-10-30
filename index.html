@@ -713,8 +713,8 @@
     let activeTimer = null;
     let wakeLock = null;
 
-    const STEP_THRESHOLD_HIGH = 5; // Резкий подскок (вверх)
-    const STEP_THRESHOLD_LOW = 2;   // Приземление (вниз)
+    const STEP_THRESHOLD_HIGH = 12; // Резкий подскок (вверх)
+    const STEP_THRESHOLD_LOW = 9;   // Приземление (вниз)
     const MIN_STEP_INTERVAL = 300;  // Минимум мс между шагами
 
     function handleMotion(event) {
@@ -723,7 +723,7 @@
       if (!acc || acc.z === null) return;
       motionSeen = true;
 
-      const zForce = Math.abs(acc.z);
+      const zForce = Math.abs(acc.y); // Считаем по оси Y, т.к. телефон держим вертикально
       document.getElementById('status').textContent = `X: ${Math.abs(acc.x).toFixed(1)} | Y: ${Math.abs(acc.y).toFixed(1)} | Z: ${Math.abs(acc.z).toFixed(1)}`;
       const now = Date.now();
 
