@@ -717,27 +717,33 @@
     const STEP_THRESHOLD_LOW = 9;   // Приземление (вниз)
     const MIN_STEP_INTERVAL = 300;  // Минимум мс между шагами
 
-        function handleMotion(event) {
+        let lastMagnitude = 9.8; // Запоминаем базовое ускорение
+
+    function handleMotion(event) {
       if (!isTracking) return;
       const acc = event.accelerationIncludingGravity;
       if (!acc || acc.x === null || acc.y === null || acc.z === null) return;
       
       motionSeen = true;
 
-      // Считаем общую силу (Магнитуду). В покое она всегда ~9.8
+      // Считаем общую силу
       const magnitude = Math.sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z);
       const now = Date.now();
 
-      // Выводим на экран для отладки
-      document.getElementById('status').textContent = `Магнитуда: ${magnitude.toFixed(1)}`;
+      // Насколько сильно сила отклонилась от гравитации (9.8)
+      const delta = Math.abs(magnitude - 9.8);
 
-      const STEP_THRESHOLD_HIGH = 11.0; // Порог подскока
-      const STEP_THRESHOLD_LOW = 8.5;   // Порог падения
+      // Выводим на экран для отладки, чтобы вы видели скачки
+      document.getElementById('status').textContent = `Сила: ${magnitude.toFixed(1)} | Отклонение: ${delta.toFixed(1)}`;
 
-      if (magnitude > STEP_THRESHOLD_HIGH && !isPeak) {
+      // Настраиваем пороги. Если шаги не считаются, мы просто подкрутим эти цифры.
+      const STEP_THRESHOLD_HIGH = 1.2; // Подскок (отклонение > 1.2)
+      const STEP_THRESHOLD_LOW = 0.5;  // Приземление (отклонение < 0.5)
+
+      if (delta > STEP_THRESHOLD_HIGH && !isPeak) {
         isPeak = true;
         lastStepTime = now;
-      } else if (magnitude < STEP_THRESHOLD_LOW && isPeak) {
+      } else if (delta < STEP_THRESHOLD_LOW && isPeak) {
         if (now - lastStepTime > MIN_STEP_INTERVAL) {
           addStep();
         }
