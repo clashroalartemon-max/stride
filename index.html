@@ -713,16 +713,8 @@
     let activeTimer = null;
     let wakeLock = null;
 
-    const STEP_THRESHOLD_HIGH = 12; // Резкий подскок (вверх)
-    const STEP_THRESHOLD_LOW = 9;   // Приземление (вниз)
-    const MIN_STEP_INTERVAL = 300;  // Минимум мс между шагами
-
-        let lastMagnitude = 9.8; // Запоминаем базовое ускорение
-
-        let lastMagnitude = 9.8;
-    let minDelta = 100, maxDelta = 0;
-    let calibrating = false;
-
+        const MIN_STEP_INTERVAL = 300;
+    
     function handleMotion(event) {
       if (!isTracking) return;
       const acc = event.accelerationIncludingGravity;
@@ -730,28 +722,21 @@
       
       motionSeen = true;
 
+      // Считаем общую силу
       const magnitude = Math.sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z);
       const now = Date.now();
-      const delta = Math.abs(magnitude - 9.8);
 
-      // Если идет калибровка, собираем статистику
-      if (calibrating) {
-        if (delta < minDelta) minDelta = delta;
-        if (delta > maxDelta) maxDelta = delta;
-        document.getElementById('status').textContent = `Мин: ${minDelta.toFixed(2)} | Макс: ${maxDelta.toFixed(2)}`;
-        return; // Не считаем шаги во время замера
-      }
+      // Выводим на экран для отладки
+      document.getElementById('status').textContent = `Магнитуда: ${magnitude.toFixed(1)}`;
 
-      // Обычный режим
-      document.getElementById('status').textContent = `Сила: ${magnitude.toFixed(1)} | Откл: ${delta.toFixed(1)}`;
+      // Пороги под ваш телефон (в покое ~9.6-10.0)
+      const STEP_THRESHOLD_HIGH = 10.1; 
+      const STEP_THRESHOLD_LOW = 9.4;   
 
-      const STEP_THRESHOLD_HIGH = 1.2; 
-      const STEP_THRESHOLD_LOW = 0.5;  
-
-      if (delta > STEP_THRESHOLD_HIGH && !isPeak) {
+      if (magnitude > STEP_THRESHOLD_HIGH && !isPeak) {
         isPeak = true;
         lastStepTime = now;
-      } else if (delta < STEP_THRESHOLD_LOW && isPeak) {
+      } else if (magnitude < STEP_THRESHOLD_LOW && isPeak) {
         if (now - lastStepTime > MIN_STEP_INTERVAL) {
           addStep();
         }
