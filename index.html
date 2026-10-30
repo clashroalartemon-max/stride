@@ -717,20 +717,28 @@
     const STEP_THRESHOLD_LOW = 9;   // Приземление (вниз)
     const MIN_STEP_INTERVAL = 300;  // Минимум мс между шагами
 
-    function handleMotion(event) {
+        function handleMotion(event) {
       if (!isTracking) return;
       const acc = event.accelerationIncludingGravity;
-      if (!acc || acc.z === null) return;
+      if (!acc || acc.y === null) return;
       motionSeen = true;
 
-      const zForce = Math.abs(acc.y); // Считаем по оси Y, т.к. телефон держим вертикально
-      document.getElementById('status').textContent = `X: ${Math.abs(acc.x).toFixed(1)} | Y: ${Math.abs(acc.y).toFixed(1)} | Z: ${Math.abs(acc.z).toFixed(1)}`;
+      // Берем ось Y (вертикальная, когда телефон перед лицом)
+      const yForce = Math.abs(acc.y);
       const now = Date.now();
 
-      if (zForce > STEP_THRESHOLD_HIGH && !isPeak) {
+      // В покое Y ~ 9.2. При шаге подскакивает до 12-15.
+      // Настраиваем пороги под ваш телефон:
+      const STEP_THRESHOLD_HIGH = 12; // Подскок (вверх)
+      const STEP_THRESHOLD_LOW = 9;   // Приземление (вниз)
+
+      // Выводим на экран для отладки
+      document.getElementById('status').textContent = `X: ${Math.abs(acc.x).toFixed(1)} | Y: ${Math.abs(acc.y).toFixed(1)} | Z: ${Math.abs(acc.z).toFixed(1)}`;
+
+      if (yForce > STEP_THRESHOLD_HIGH && !isPeak) {
         isPeak = true;
         lastStepTime = now;
-      } else if (zForce < STEP_THRESHOLD_LOW && isPeak) {
+      } else if (yForce < STEP_THRESHOLD_LOW && isPeak) {
         if (now - lastStepTime > MIN_STEP_INTERVAL) addStep();
         isPeak = false;
       }
