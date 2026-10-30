@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Stride — шагомер</title>
+  <meta name="theme-color" content="#07070c">
+  <meta name="description" content="Шагомер с тренировками, достижениями и магазином наград">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Stride">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23c6ff3d'/%3E%3Cstop offset='1' stop-color='%2322e3ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='%2307070c'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='url(%23g)' stroke-width='7' stroke-linecap='round' stroke-dasharray='95 200' transform='rotate(-90 32 32)'/%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07070c;
+      --surface: rgba(255, 255, 255, 0.055);
+      --surface-2: rgba(255, 255, 255, 0.09);
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #f4f5fb;
+      --muted: #8b8fa3;
+      --dim: #565a6e;
+      --lime: #c6ff3d;
+      --cyan: #22e3ff;
+      --pink: #ff3d9a;
+      --violet: #7b5cff;
+      --orange: #ff8a3d;
+      --grad: linear-gradient(135deg, var(--lime), var(--cyan));
+      --grad-hot: linear-gradient(135deg, var(--pink), var(--violet));
+      --radius: 24px;
+      --display: 'Unbounded', 'Manrope', system-ui, sans-serif;
+      --body: 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+      --ease: cubic-bezier(.22, 1, .36, 1);
+      --nav-h: 74px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--body);
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+    input { font: inherit; color: inherit; }
+
+    /* ===== Фон: живые неоновые пятна ===== */
+    .backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+    .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .45; animation: drift 18s ease-in-out infinite alternate; }
+    .blob.b1 { width: 360px; height: 360px; background: #3d7bff; top: -120px; left: -120px; }
+    .blob.b2 { width: 300px; height: 300px; background: var(--pink); top: 35%; right: -160px; opacity: .28; animation-delay: -6s; }
+    .blob.b3 { width: 320px; height: 320px; background: #2bd98a; bottom: -140px; left: 10%; opacity: .25; animation-delay: -12s; }
+    .grain { position: absolute; inset: 0; opacity: .06; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+    @keyframes drift { to { transform: translate(60px, 80px) scale(1.15); } }
+
+    /* ===== Каркас ===== */
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100%;
+      padding: calc(env(safe-area-inset-top) + 18px) 18px calc(var(--nav-h) + env(safe-area-inset-bottom) + 28px);
+    }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .hello small { display: block; font-size: 12px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
+    .hello h1 { font-family: var(--display); font-size: 22px; font-weight: 700; letter-spacing: -.01em; margin-top: 2px; }
+    .coin-pill {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px 8px 8px; border-radius: 99px;
+      background: var(--surface); border: 1px solid var(--border);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      font-weight: 800; font-variant-numeric: tabular-nums;
+      transition: transform .3s var(--ease);
+    }
+    .coin-pill.bump { transform: scale(1.12); }
+    .coin {
+      width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+      background: radial-gradient(circle at 30% 30%, #fff6b0, #ffc21a 55%, #d18400);
+      color: #6b3d00; font-size: 12px; font-weight: 900; box-shadow: 0 0 14px rgba(255, 194, 26, .5);
+    }
+
+    .tab { display: none; flex-direction: column; gap: 16px; }
+    .tab.active { display: flex; animation: tabIn .5s var(--ease); }
+    @keyframes tabIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+    .glass {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(22px) saturate(140%);
+      -webkit-backdrop-filter: blur(22px) saturate(140%);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .06);
+    }
+    .card { padding: 18px; }
+    .card-title { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+    .card-title h2 { font-size: 15px; font-weight: 700; }
+    .card-title span { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .section-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; font-weight: 700; margin: 6px 4px -4px; }
+
+    /* ===== Главная: кольцо прогресса ===== */
+    .hero { padding: 26px 18px 22px; display: flex; flex-direction: column; align-items: center; }
+    .ring-wrap { position: relative; width: 250px; height: 250px; }
+    .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+    .ring-bg { fill: none; stroke: rgba(255, 255, 255, .07); stroke-width: 18; }
+    .ring-fg { fill: none; stroke: url(#ringGrad); stroke-width: 18; stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease); filter: drop-shadow(0 0 10px rgba(34, 227, 255, .55)); }
+    .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .ring-center .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .14em; font-weight: 700; }
+    .big-num {
+      font-family: var(--display); font-size: 54px; font-weight: 800; line-height: 1.05; letter-spacing: -.03em;
+      font-variant-numeric: tabular-nums;
+      background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .big-num.tick { animation: tick .35s var(--ease); }
+    @keyframes tick { 40% { transform: scale(1.07); } }
+    .ring-center .goal { font-size: 13px; color: var(--muted); margin-top: 4px; font-weight: 600; }
+    .ring-wrap.live::after {
+      content: ''; position: absolute; inset: 14px; border-radius: 50%;
+      box-shadow: 0 0 60px rgba(198, 255, 61, .25); animation: breathe 2.4s ease-in-out infinite;
+    }
+    @keyframes breathe { 50% { box-shadow: 0 0 90px rgba(34, 227, 255, .4); } }
+
+    .bar { width: 100%; margin-top: 22px; }
+    .bar-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
+    .bar-track { height: 10px; border-radius: 99px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+    .bar-fill { height: 100%; width: 0; border-radius: inherit; background: var(--grad); box-shadow: 0 0 16px rgba(198, 255, 61, .5); transition: width 1s var(--ease); }
+
+    .btn-main {
+      margin-top: 22px; width: 100%; height: 60px; border-radius: 20px;
+      font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .04em;
+      background: var(--grad); color: #07130a;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      box-shadow: 0 10px 30px rgba(110, 240, 160, .3);
+      transition: transform .2s var(--ease), box-shadow .3s, background .3s;
+    }
+    .btn-main:active { transform: scale(.97); }
+    .btn-main.stop { background: var(--grad-hot); color: #fff; box-shadow: 0 10px 30px rgba(255, 61, 154, .35); }
+    .btn-main svg { width: 20px; height: 20px; }
+    .status { margin-top: 12px; font-size: 13px; color: var(--muted); text-align: center; line-height: 1.5; min-height: 20px; transition: color .3s; }
+    .status.warn { color: #ffb36b; }
+    .status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--lime); margin-right: 6px; box-shadow: 0 0 10px var(--lime); animation: pulse 1.2s infinite; vertical-align: 1px; }
+    @keyframes pulse { 50% { opacity: .3; } }
+
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .stat { padding: 14px 12px; border-radius: 20px; }
+    .stat .ico { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; margin-bottom: 10px; }
+    .stat .ico svg { width: 16px; height: 16px; }
+    .stat b { display: block; font-family: var(--display); font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .stat small { font-size: 11px; color: var(--muted); font-weight: 600; }
+
+    /* Неделя */
+    .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; align-items: end; height: 120px; }
+    .wday { display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+    .wbar { width: 100%; max-width: 26px; border-radius: 8px; background: rgba(255, 255, 255, .08); min-height: 6px; transition: height .8s var(--ease); position: relative; }
+    .wbar.on { background: linear-gradient(180deg, var(--cyan), rgba(34, 227, 255, .2)); }
+    .wbar.full { background: linear-gradient(180deg, var(--lime), rgba(198, 255, 61, .25)); box-shadow: 0 0 14px rgba(198, 255, 61, .35); }
+    .wday span { font-size: 11px; color: var(--dim); font-weight: 700; }
+    .wday.today span { color: var(--text); }
+
+    /* Мини-карта */
+    .map { padding: 0; overflow: hidden; }
+    .map svg { display: block; width: 100%; height: 190px; }
+    .map-route { fill: none; stroke: url(#routeGrad); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 8 10; animation: dash 1.6s linear infinite; filter: drop-shadow(0 0 6px rgba(198, 255, 61, .7)); }
+    @keyframes dash { to { stroke-dashoffset: -36; } }
+    .map-pin { animation: ping 2s ease-out infinite; transform-origin: center; transform-box: fill-box; }
+    @keyframes ping { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(2.6); opacity: 0; } }
+    .map-overlay {
+      position: absolute; left: 12px; right: 12px; bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 10px 12px; border-radius: 16px;
+      background: rgba(10, 10, 18, .6); border: 1px solid var(--border);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .map-overlay b { font-size: 14px; display: block; }
+    .map-overlay small { font-size: 11px; color: var(--muted); }
+    .tag { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 5px 9px; border-radius: 99px; background: rgba(255, 61, 154, .16); color: #ff86c0; border: 1px solid rgba(255, 61, 154, .3); white-space: nowrap; }
+
+    /* ===== Тренировки ===== */
+    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .mode {
+      padding: 18px 16px; border-radius: 22px; text-align: left;
+      background: var(--surface); border: 1px solid var(--border);
+      transition: transform .25s var(--ease), border-color .3s, background .3s, opacity .3s;
+      position: relative; overflow: hidden; isolation: isolate;
+    }
+    .mode:active { transform: scale(.97); }
+    .mode .emoji { font-size: 30px; display: block; margin-bottom: 18px; }
+    .mode b { font-family: var(--display); font-size: 15px; font-weight: 700; display: block; }
+    .mode small { font-size: 12px; color: var(--muted); }
+    .mode::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity .35s; z-index: -1; }
+    .mode[data-mode="walk"]::before { background: linear-gradient(145deg, rgba(198, 255, 61, .25), rgba(34, 227, 255, .08)); }
+    .mode[data-mode="run"]::before { background: linear-gradient(145deg, rgba(255, 61, 154, .28), rgba(123, 92, 255, .1)); }
+    .mode.sel { border-color: rgba(255, 255, 255, .35); }
+    .mode.sel::before { opacity: 1; }
+    .mode .check { position: absolute; top: 14px; right: 14px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); display: grid; place-items: center; transition: all .3s; }
+    .mode.sel .check { background: #fff; border-color: #fff; }
+    .mode.sel .check::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #07070c; }
+    .modes.locked .mode:not(.sel) { opacity: .35; pointer-events: none; }
+
+    .timer-card { padding: 26px 18px 20px; text-align: center; overflow: hidden; }
+    .timer-card .lbl { font-size: 12px; color: var(--muted); letter-spacing: .14em; text-transform: uppercase; font-weight: 700; }
+    .timer {
+      font-family: var(--display); font-size: 58px; font-weight: 800; letter-spacing: -.02em; margin: 6px 0 18px;
+      font-variant-numeric: tabular-nums; transition: color .3s;
+    }
+    .timer-card.running .timer { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .timer-card.run.running .timer { background: linear-gradient(135deg, #ff7ac0, #a48bff); -webkit-background-clip: text; background-clip: text; }
+    .timer-card.paused .timer { color: var(--muted); animation: pulse 1.4s infinite; }
+    .w-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .w-stats div { padding: 12px 6px; border-radius: 16px; background: rgba(255, 255, 255, .04); }
+    .w-stats b { display: block; font-family: var(--display); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .w-stats small { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .w-actions { display: flex; gap: 10px; margin-top: 18px; }
+    .w-actions .btn-main { margin-top: 0; }
+    .btn-ghost {
+      height: 60px; min-width: 60px; padding: 0 18px; border-radius: 20px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700;
+      transition: transform .2s var(--ease), background .3s;
+    }
+    .btn-ghost:active { transform: scale(.95); }
+    .btn-ghost svg { width: 20px; height: 20px; }
+    .hidden { display: none !important; }
+
+    .history { display: flex; flex-direction: column; gap: 8px; }
+    .h-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 18px; background: rgba(255, 255, 255, .035); animation: tabIn .4s var(--ease) both; }
+    .h-item .em { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; font-size: 20px; background: rgba(198, 255, 61, .12); flex-shrink: 0; }
+    .h-item.run .em { background: rgba(255, 61, 154, .14); }
+    .h-item .info { flex: 1; min-width: 0; }
+    .h-item .info b { font-size: 14px; display: block; }
+    .h-item .info small { font-size: 12px; color: var(--muted); }
+    .h-item .val { text-align: right; font-family: var(--display); font-size: 14px; font-weight: 700; }
+    .h-item .val small { display: block; font-family: var(--body); font-size: 11px; color: var(--muted); font-weight: 600; }
+    .empty { text-align: center; color: var(--dim); font-size: 13px; padding: 18px 0 8px; }
+
+    /* ===== Достижения ===== */
+    .score { padding: 22px 18px; display: flex; align-items: center; gap: 16px; overflow: hidden; }
+    .score::after { content: ''; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 194, 26, .35), transparent 70%); }
+    .score .coin { width: 56px; height: 56px; font-size: 24px; flex-shrink: 0; }
+    .score b { font-family: var(--display); font-size: 32px; font-weight: 800; display: block; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .score small { color: var(--muted); font-size: 13px; font-weight: 600; }
+    .score .count { margin-left: auto; text-align: right; position: relative; z-index: 1; }
+    .score .count b { font-size: 20px; }
+
+    .ach-list { display: flex; flex-direction: column; gap: 10px; }
+    .ach { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 22px; transition: transform .3s var(--ease); }
+    .ach .badge {
+      width: 56px; height: 56px; border-radius: 18px; flex-shrink: 0; display: grid; place-items: center; font-size: 26px;
+      background: rgba(255, 255, 255, .05); filter: grayscale(1); opacity: .5; transition: all .5s var(--ease);
+    }
+    .ach.done .badge { filter: none; opacity: 1; background: var(--grad); box-shadow: 0 0 24px rgba(198, 255, 61, .35); }
+    .ach .body { flex: 1; min-width: 0; }
+    .ach .body b { font-size: 15px; display: block; }
+    .ach .body small { font-size: 12px; color: var(--muted); display: block; margin-top: 2px; }
+    .ach .mini-track { height: 6px; border-radius: 99px; background: rgba(255, 255, 255, .07); margin-top: 8px; overflow: hidden; }
+    .ach .mini-track i { display: block; height: 100%; background: var(--grad); border-radius: inherit; transition: width .8s var(--ease); }
+    .ach .reward { display: flex; align-items: center; gap: 5px; font-weight: 800; font-size: 14px; flex-shrink: 0; }
+    .ach .reward .coin { width: 20px; height: 20px; font-size: 10px; }
+    .ach:not(.done) .reward { opacity: .55; }
+    .ach.done .reward::before { content: '✓'; color: var(--lime); margin-right: 2px; }
+
+    /* ===== Профиль ===== */
+    .profile { padding: 26px 18px 20px; text-align: center; overflow: hidden; isolation: isolate; }
+    .profile .pbg { position: absolute; inset: 0; z-index: -1; opacity: .9; transition: opacity .5s; }
+    .ava-frame { width: 116px; height: 116px; margin: 0 auto; border-radius: 50%; padding: 5px; position: relative; display: grid; place-items: center; }
+    .ava-frame::before { content: ''; position: absolute; inset: 0; border-radius: 50%; transition: all .5s; }
+    .avatar {
+      position: relative; width: 100%; height: 100%; border-radius: 50%;
+      background: linear-gradient(145deg, #1c1d2b, #0d0d16);
+      display: grid; place-items: center;
+      font-family: var(--display); font-size: 38px; font-weight: 800;
+      border: 3px solid var(--bg);
+    }
+    .avatar span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lvl-badge {
+      position: absolute; bottom: -2px; right: 4px; z-index: 2;
+      padding: 4px 9px; border-radius: 99px; font-size: 11px; font-weight: 800;
+      background: var(--grad); color: #07130a; border: 3px solid var(--bg);
+    }
+    .name-row { margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .name-input {
+      font-family: var(--display); font-size: 22px; font-weight: 700; text-align: center;
+      background: transparent; border: 0; border-bottom: 2px dashed transparent; outline: none;
+      width: 100%; max-width: 260px; padding: 4px 6px; transition: border-color .3s;
+    }
+    .name-input:focus { border-bottom-color: var(--cyan); }
+    .name-input::placeholder { color: var(--dim); }
+    .rank { font-size: 13px; color: var(--muted); font-weight: 600; margin-top: 4px; }
+    .xp { margin: 18px auto 0; max-width: 300px; }
+    .p-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 18px; }
+    .p-stats div { padding: 10px 4px; border-radius: 16px; background: rgba(0, 0, 0, .25); }
+    .p-stats b { display: block; font-family: var(--display); font-size: 16px; font-variant-numeric: tabular-nums; }
+    .p-stats small { font-size: 11px; color: var(--muted); font-weight: 600; }
+
+    .social { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .social button { padding: 16px; border-radius: 20px; text-align: left; display: flex; flex-direction: column; gap: 12px; transition: transform .2s var(--ease); }
+    .social button:active { transform: scale(.97); }
+    .social .ico { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; }
+    .social .ico svg { width: 20px; height: 20px; }
+    .social b { font-size: 14px; }
+
+    .seg { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 16px; background: rgba(0, 0, 0, .3); margin-bottom: 14px; position: relative; }
+    .seg button { padding: 10px; border-radius: 12px; font-weight: 700; font-size: 13px; color: var(--muted); position: relative; z-index: 1; transition: color .3s; }
+    .seg button.on { color: var(--text); }
+    .seg .knob { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); transition: transform .4s var(--ease); }
+    .seg.right .knob { transform: translateX(100%); }
+    .shop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .item {
+      padding: 12px 8px 10px; border-radius: 18px; text-align: center;
+      background: rgba(255, 255, 255, .04); border: 1px solid transparent;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      transition: transform .25s var(--ease), border-color .3s, background .3s;
+      animation: tabIn .4s var(--ease) both;
+    }
+    .item:active { transform: scale(.95); }
+    .item.equipped { border-color: var(--lime); background: rgba(198, 255, 61, .08); }
+    .item .prev { width: 52px; height: 52px; border-radius: 50%; position: relative; display: grid; place-items: center; }
+    .item .prev.ring { padding: 4px; }
+    .item .prev.ring::before { content: ''; position: absolute; inset: 0; border-radius: 50%; }
+    .item .prev.ring i { position: relative; width: 100%; height: 100%; border-radius: 50%; background: #14141f; border: 2px solid var(--bg); }
+    .item .prev.swatch { border-radius: 14px; width: 100%; height: 52px; }
+    .item b { font-size: 12px; }
+    .item .price { font-size: 11px; font-weight: 800; display: flex; align-items: center; gap: 4px; color: var(--muted); }
+    .item .price .coin { width: 14px; height: 14px; font-size: 8px; box-shadow: none; }
+    .item.owned .price { color: var(--cyan); }
+    .item.equipped .price { color: var(--lime); }
+    .item.cant { opacity: .5; }
+
+    .settings { display: flex; flex-direction: column; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 2px; }
+    .row + .row { border-top: 1px solid var(--border); }
+    .row b { font-size: 14px; display: block; }
+    .row small { font-size: 12px; color: var(--muted); }
+    .switch { width: 50px; height: 30px; border-radius: 99px; background: rgba(255, 255, 255, .12); position: relative; transition: background .3s; flex-shrink: 0; }
+    .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform .35s var(--ease); }
+    .switch.on { background: var(--lime); }
+    .switch.on::after { transform: translateX(20px); background: #07130a; }
+    .stepper { display: flex; align-items: center; gap: 6px; }
+    .stepper button { width: 32px; height: 32px; border-radius: 10px; background: var(--surface-2); font-weight: 800; font-size: 16px; }
+    .stepper span { min-width: 62px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .danger { color: #ff6b8b; font-weight: 700; font-size: 14px; padding: 6px 12px; border-radius: 12px; background: rgba(255, 61, 110, .1); }
+
+    /* ===== Нижняя навигация ===== */
+    .nav {
+      position: fixed; z-index: 20; left: 50%; transform: translateX(-50%);
+      bottom: calc(env(safe-area-inset-bottom) + 12px);
+      width: calc(100% - 24px); max-width: 456px; height: var(--nav-h);
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      padding: 8px; border-radius: 26px;
+      background: rgba(16, 16, 26, .72); border: 1px solid var(--border);
+      backdrop-filter: blur(26px) saturate(160%); -webkit-backdrop-filter: blur(26px) saturate(160%);
+      box-shadow: 0 16px 50px rgba(0, 0, 0, .55);
+    }
+    .nav .pill {
+      position: absolute; top: 8px; bottom: 8px; left: 8px; width: calc((100% - 16px) / 4);
+      border-radius: 19px; background: linear-gradient(135deg, rgba(198, 255, 61, .16), rgba(34, 227, 255, .12));
+      border: 1px solid rgba(198, 255, 61, .25);
+      transition: transform .5s var(--ease);
+    }
+    .nav button { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--dim); transition: color .3s; }
+    .nav button svg { width: 23px; height: 23px; transition: transform .4s var(--ease); }
+    .nav button span { font-size: 10px; font-weight: 700; letter-spacing: .02em; }
+    .nav button.on { color: var(--text); }
+    .nav button.on svg { transform: translateY(-1px) scale(1.08); color: var(--lime); }
+    .nav .ndot { position: absolute; top: 9px; right: calc(50% - 16px); width: 8px; height: 8px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 8px var(--pink); }
+
+    /* ===== Модальное окно и тосты ===== */
+    .modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; padding: 16px; padding-bottom: calc(env(safe-area-inset-bottom) + 16px); visibility: hidden; }
+    .modal .shade { position: absolute; inset: 0; background: rgba(0, 0, 0, .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); opacity: 0; transition: opacity .35s; }
+    .modal .sheet {
+      position: relative; width: 100%; max-width: 440px; padding: 28px 22px 20px; text-align: center;
+      background: rgba(22, 22, 34, .92); transform: translateY(110%); transition: transform .45s var(--ease);
+    }
+    .modal.open { visibility: visible; }
+    .modal.open .shade { opacity: 1; }
+    .modal.open .sheet { transform: none; }
+    .modal .m-ico { width: 72px; height: 72px; border-radius: 24px; margin: 0 auto 16px; display: grid; place-items: center; font-size: 34px; background: var(--grad-hot); box-shadow: 0 0 40px rgba(255, 61, 154, .4); }
+    .modal h3 { font-family: var(--display); font-size: 19px; font-weight: 700; margin-bottom: 8px; }
+    .modal p { color: var(--muted); font-size: 15px; line-height: 1.55; }
+    .modal .m-actions { display: flex; gap: 10px; margin-top: 22px; }
+    .modal .m-actions button { flex: 1; height: 54px; margin: 0; }
+
+    .toasts { position: fixed; top: calc(env(safe-area-inset-top) + 12px); left: 50%; transform: translateX(-50%); width: calc(100% - 24px); max-width: 440px; z-index: 60; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast {
+      display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px;
+      background: rgba(22, 22, 34, .9); border: 1px solid rgba(198, 255, 61, .35);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, .5), 0 0 30px rgba(198, 255, 61, .15);
+      animation: toastIn .55s var(--ease) both;
+    }
+    .toast.out { animation: toastOut .4s var(--ease) both; }
+    .toast .t-ico { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; background: var(--grad); flex-shrink: 0; }
+    .toast b { font-size: 14px; display: block; }
+    .toast small { font-size: 12px; color: var(--muted); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(-30px) scale(.95); } }
+    @keyframes toastOut { to { opacity: 0; transform: translateY(-20px) scale(.95); } }
+
+    .confetti { position: fixed; top: -10px; width: 8px; height: 14px; z-index: 70; pointer-events: none; border-radius: 2px; animation: fall linear forwards; }
+    @keyframes fall { to { transform: translateY(105vh) rotate(720deg); opacity: .2; } }
+
+    /* ===== Рамки аватара (магазин) ===== */
+    .fr-none::before { background: rgba(255, 255, 255, .1); }
+    .fr-neon::before { background: var(--grad); box-shadow: 0 0 22px rgba(34, 227, 255, .7); }
+    .fr-gold::before { background: linear-gradient(135deg, #fff1a8, #e0a92e 40%, #8a5a00 60%, #ffe27a); box-shadow: 0 0 18px rgba(255, 194, 26, .5); }
+    .fr-rainbow::before { background: conic-gradient(#ff3d9a, #ff8a3d, #ffe53d, #c6ff3d, #22e3ff, #7b5cff, #ff3d9a); animation: spin 3s linear infinite; box-shadow: 0 0 20px rgba(123, 92, 255, .6); }
+    .fr-fire::before { background: conic-gradient(from 0deg, #ff2d2d, #ff8a3d, #ffd23d, #ff8a3d, #ff2d2d); animation: spin 1.6s linear infinite, flicker 0.9s ease-in-out infinite alternate; box-shadow: 0 0 26px rgba(255, 90, 40, .8); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes flicker { to { box-shadow: 0 0 40px rgba(255, 140, 40, 1); } }
+
+    .bg-none { background: radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, .06), transparent 70%); }
+    .bg-aurora { background: radial-gradient(80% 70% at 20% 0%, rgba(43, 217, 138, .55), transparent 70%), radial-gradient(70% 70% at 90% 30%, rgba(34, 227, 255, .45), transparent 70%), radial-gradient(60% 60% at 50% 100%, rgba(123, 92, 255, .4), transparent 70%); }
+    .bg-sunset { background: linear-gradient(180deg, rgba(255, 90, 90, .55), rgba(255, 138, 61, .4) 45%, rgba(123, 92, 255, .35)); }
+    .bg-ocean { background: radial-gradient(90% 80% at 50% 0%, rgba(34, 140, 255, .6), transparent 70%), linear-gradient(180deg, transparent, rgba(0, 220, 200, .3)); }
+    .bg-cyber { background: linear-gradient(135deg, rgba(255, 61, 154, .55), transparent 50%), linear-gradient(315deg, rgba(34, 227, 255, .5), transparent 50%), repeating-linear-gradient(0deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 14px); }
+
+    @media (min-width: 420px) { .big-num { font-size: 60px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="backdrop"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="grain"></div></div>
+
+  <!-- Общие SVG-градиенты -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c6ff3d"/><stop offset="1" stop-color="#22e3ff"/></linearGradient>
+      <linearGradient id="routeGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#22e3ff"/><stop offset="1" stop-color="#c6ff3d"/></linearGradient>
+    </defs>
+  </svg>
+
+  <main class="app">
+    <header class="topbar">
+      <div class="hello"><small id="greet">Привет</small><h1 id="helloName">Атлет</h1></div>
+      <div class="coin-pill" id="coinPill"><div class="coin">S</div><span id="coinTop">0</span></div>
+    </header>
+
+    <!-- ===== ГЛАВНАЯ ===== -->
+    <section class="tab active" id="tab-home">
+      <div class="glass hero">
+        <div class="ring-wrap" id="ringWrap">
+          <svg viewBox="0 0 250 250">
+            <circle class="ring-bg" cx="125" cy="125" r="108"/>
+            <circle class="ring-fg" id="ring" cx="125" cy="125" r="108" stroke-dasharray="678.58" stroke-dashoffset="678.58"/>
+          </svg>
+          <div class="ring-center">
+            <div class="lbl">Шагов сегодня</div>
+            <div class="big-num" id="steps">0</div>
+            <div class="goal">цель <span id="goalTxt">10 000</span></div>
+          </div>
+        </div>
+
+        <div class="bar">
+          <div class="bar-head"><span>Прогресс дня</span><span id="pctTxt">0%</span></div>
+          <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+        </div>
+
+        <button class="btn-main" id="toggle">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14z"/></svg>
+          <span>СТАРТ</span>
+        </button>
+        <div class="status" id="status">Нажмите «Старт» и разрешите доступ к движению</div>
+      </div>
+
+      <div class="stats">
+        <div class="glass stat">
+          <div class="ico" style="background:rgba(34,227,255,.14);color:var(--cyan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg></div>
+          <b id="kmTxt">0.00</b><small>км</small>
+        </div>
+        <div class="glass stat">
+          <div class="ico" style="background:rgba(255,138,61,.15);color:var(--orange)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.5 2-5 1 1 1.5 2 3 2-1-2.5-.5-5 0-7z"/></svg></div>
+          <b id="kcalTxt">0</b><small>ккал</small>
+        </div>
+        <div class="glass stat">
+          <div class="ico" style="background:rgba(198,255,61,.13);color:var(--lime)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg></div>
+          <b id="minTxt">0</b><small>мин активн.</small>
+        </div>
+      </div>
+
+      <div class="glass card">
+        <div class="card-title"><h2>Неделя</h2><span id="weekTotal">0 шагов</span></div>
+        <div class="week" id="week"></div>
+      </div>
+
+      <div class="glass map">
+        <svg viewBox="0 0 400 190" preserveAspectRatio="xMidYMid slice">
+          <rect width="400" height="190" fill="#0d0e18"/>
+          <path d="M250 -10 C 300 40, 380 30, 420 80 L 420 -10 Z" fill="#11241b"/>
+          <path d="M-10 140 C 40 120, 90 160, 140 200 L -10 200 Z" fill="#0e1a2b"/>
+          <g stroke="#1b1d2c" stroke-width="10" fill="none">
+            <path d="M-10 60 H 420"/><path d="M-10 128 H 420"/><path d="M80 -10 V 200"/><path d="M200 -10 V 200"/><path d="M320 -10 V 200"/>
+          </g>
+          <g stroke="#151724" stroke-width="4" fill="none">
+            <path d="M-10 25 H 420"/><path d="M-10 95 H 420"/><path d="M-10 162 H 420"/><path d="M140 -10 V 200"/><path d="M260 -10 V 200"/><path d="M30 -10 L 180 200"/>
+          </g>
+          <g fill="#121422"><rect x="92" y="70" width="44" height="46" rx="6"/><rect x="212" y="70" width="44" height="22" rx="5"/><rect x="268" y="102" width="40" height="18" rx="5"/><rect x="332" y="70" width="60" height="46" rx="6"/><rect x="212" y="138" width="96" height="20" rx="5"/></g>
+          <path class="map-route" d="M40 165 C 70 140, 80 128, 80 110 S 90 60, 140 60 H 200 C 220 60, 200 128, 240 128 S 300 120, 320 95 S 330 60, 360 50"/>
+          <circle cx="40" cy="165" r="6" fill="#22e3ff"/>
+          <circle class="map-pin" cx="360" cy="50" r="9" fill="rgba(198,255,61,.5)"/>
+          <circle cx="360" cy="50" r="7" fill="#c6ff3d" stroke="#07070c" stroke-width="3"/>
+        </svg>
+        <div class="map-overlay">
+          <div><b>Мини-карта маршрута</b><small>Трек появится с поддержкой GPS</small></div>
+          <span class="tag">Скоро</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ТРЕНИРОВКИ ===== -->
+    <section class="tab" id="tab-workout">
+      <div class="section-label">Режим</div>
+      <div class="modes" id="modes">
+        <button class="mode sel" data-mode="walk"><span class="check"></span><span class="emoji">🚶</span><b>Ходьба</b><small>Спокойный темп</small></button>
+        <button class="mode" data-mode="run"><span class="check"></span><span class="emoji">🏃</span><b>Бег</b><small>Интенсивный темп</small></button>
+      </div>
+
+      <div class="glass timer-card" id="timerCard">
+        <div class="lbl" id="wLabel">Готов к старту</div>
+        <div class="timer" id="timer">00:00</div>
+        <div class="w-stats">
+          <div><b id="wDist">0</b><small id="wDistUnit">метров</small></div>
+          <div><b id="wSteps">0</b><small>шагов</small></div>
+          <div><b id="wPace">—</b><small>шаг/мин</small></div>
+        </div>
+        <div class="w-actions">
+          <button class="btn-main" id="wStart">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14z"/></svg>
+            <span>НАЧАТЬ ТРЕНИРОВКУ</span>
+          </button>
+          <button class="btn-ghost hidden" id="wPause" aria-label="Пауза">
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>
+          </button>
+          <button class="btn-main stop hidden" id="wStop">
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>
+            <span>ЗАВЕРШИТЬ</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="glass card">
+        <div class="card-title"><h2>История</h2><span id="histCount"></span></div>
+        <div class="history" id="history"></div>
+      </div>
+    </section>
+
+    <!-- ===== ДОСТИЖЕНИЯ ===== -->
+    <section class="tab" id="tab-ach">
+      <div class="glass score">
+        <div class="coin">S</div>
+        <div style="position:relative;z-index:1"><b id="coinBig">0</b><small>очков на счету</small></div>
+        <div class="count"><b id="achCount">0/5</b><small>открыто</small></div>
+      </div>
+      <div class="ach-list" id="achList"></div>
+    </section>
+
+    <!-- ===== ПРОФИЛЬ ===== -->
+    <section class="tab" id="tab-profile">
+      <div class="glass profile">
+        <div class="pbg" id="pbg"></div>
+        <div class="ava-frame" id="avaFrame">
+          <div class="avatar"><span id="avaTxt">?</span></div>
+          <div class="lvl-badge" id="lvlBadge">LV 1</div>
+        </div>
+        <div class="name-row"><input class="name-input" id="nameInput" maxlength="20" placeholder="Введите имя" autocomplete="off"></div>
+        <div class="rank" id="rankTxt">Новичок</div>
+        <div class="bar xp">
+          <div class="bar-head"><span id="xpLbl">Уровень 1</span><span id="xpTxt">0 / 2000</span></div>
+          <div class="bar-track"><div class="bar-fill" id="xpFill"></div></div>
+        </div>
+        <div class="p-stats">
+          <div><b id="pTotal">0</b><small>всего шагов</small></div>
+          <div><b id="pKm">0</b><small>км всего</small></div>
+          <div><b id="pWork">0</b><small>тренировок</small></div>
+        </div>
+      </div>
+
+      <div class="social">
+        <button class="glass" data-stub>
+          <div class="ico" style="background:rgba(34,227,255,.14);color:var(--cyan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg></div>
+          <b>Добавить друга</b>
+        </button>
+        <button class="glass" data-stub>
+          <div class="ico" style="background:rgba(255,61,154,.15);color:var(--pink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21V11M16 21V7M12 21V3M4 21h16"/></svg></div>
+          <b>Рейтинг друзей</b>
+        </button>
+      </div>
+
+      <div class="glass card">
+        <div class="card-title"><h2>Магазин</h2><span>тратьте очки на стиль</span></div>
+        <div class="seg" id="seg"><div class="knob"></div><button class="on" data-cat="frame">Рамки аватара</button><button data-cat="bg">Фоны профиля</button></div>
+        <div class="shop" id="shop"></div>
+      </div>
+
+      <div class="glass card settings">
+        <div class="card-title" style="margin-bottom:4px"><h2>Настройки</h2></div>
+        <div class="row">
+          <div><b>Дневная цель</b><small>шагов в день</small></div>
+          <div class="stepper"><button id="goalMinus">−</button><span id="goalVal">10 000</span><button id="goalPlus">+</button></div>
+        </div>
+        <div class="row">
+          <div><b>Демо-режим</b><small>симуляция шагов без датчика (для ПК)</small></div>
+          <button class="switch" id="demoSw" aria-label="Демо-режим"></button>
+        </div>
+        <div class="row">
+          <div><b>Сбросить данные</b><small>шаги, очки и покупки</small></div>
+          <button class="danger" id="resetBtn">Сброс</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== Нижняя навигация ===== -->
+  <nav class="nav" id="nav">
+    <div class="pill" id="navPill"></div>
+    <button class="on" data-tab="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Главная</span>
+    </button>
+    <button data-tab="workout">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span>Тренировки</span>
+    </button>
+    <button data-tab="ach">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3"/></svg><span>Достижения</span>
+    </button>
+    <button data-tab="profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Профиль</span>
+    </button>
+  </nav>
+
+  <!-- ===== Модальное окно ===== -->
+  <div class="modal" id="modal" role="dialog" aria-modal="true">
+    <div class="shade" data-close></div>
+    <div class="glass sheet">
+      <div class="m-ico" id="mIco">👥</div>
+      <h3 id="mTitle">Друзья</h3>
+      <p id="mText">Для синхронизации с друзьями нужен сервер. Скоро!</p>
+      <div class="m-actions" id="mActions"></div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script>
+    // ================================================================
+    //  ХРАНИЛИЩЕ (localStorage)
+    // ================================================================
+    const STORE_KEY = 'stride.v2';
+    const STEP_LENGTH = 0.7; // метров на шаг
+
+    function defaults() {
+      return {
+        name: '',
+        coins: 0,
+        total: 0,                    // шагов за всё время
+        days: {},                    // { 'YYYY-MM-DD': { steps, active } }
+        ach: {},                     // { id: timestamp }
+        owned: ['f-none', 'b-none'],
+        frame: 'f-none',
+        bg: 'b-none',
+        workouts: [],
+        activeWorkout: null,
+        goal: 10000,
+        demo: false,
+        seenAch: 0
+      };
+    }
+
+    function load() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORE_KEY));
+        return Object.assign(defaults(), saved || {});
+      } catch (e) {
+        return defaults();
+      }
+    }
+
+    let S = load();
+    let saveTimer = null;
+    function save(now) {
+      clearTimeout(saveTimer);
+      const write = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} };
+      if (now) write(); else saveTimer = setTimeout(write, 400);
+    }
+    window.addEventListener('pagehide', () => save(true));
+    document.addEventListener('visibilitychange', () => { if (document.hidden) save(true); });
+
+    function dayKey(d = new Date()) {
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function today() {
+      const k = dayKey();
+      if (!S.days[k]) S.days[k] = { steps: 0, active: 0 };
+      return S.days[k];
+    }
+
+    const $ = (id) => document.getElementById(id);
+    const fmt = (n) => Math.round(n).toLocaleString('ru-RU');
+    const plural = (n, a, b, c) => { n = Math.abs(n) % 100; const n1 = n % 10; if (n > 10 && n < 20) return c; if (n1 > 1 && n1 < 5) return b; if (n1 === 1) return a; return c; };
+
+    // ================================================================
+    //  ДЕТЕКЦИЯ ШАГОВ (исходная логика с двумя порогами)
+    // ================================================================
+    let isTracking = false;
+    let lastStepTime = 0;
+    let isPeak = false;
+    let motionSeen = false;
+    let listenerAdded = false;
+    let demoTimer = null;
+    let activeTimer = null;
+    let wakeLock = null;
+
+    const STEP_THRESHOLD_HIGH = 15; // Резкий подскок (вверх)
+    const STEP_THRESHOLD_LOW = 8;   // Приземление (вниз)
+    const MIN_STEP_INTERVAL = 300;  // Минимум мс между шагами
+
+    function handleMotion(event) {
+      if (!isTracking) return;
+      const acc = event.accelerationIncludingGravity;
+      if (!acc || acc.z === null) return;
+      motionSeen = true;
+
+      const zForce = Math.abs(acc.z);
+      const now = Date.now();
+
+      if (zForce > STEP_THRESHOLD_HIGH && !isPeak) {
+        isPeak = true;
+        lastStepTime = now;
+      } else if (zForce < STEP_THRESHOLD_LOW && isPeak) {
+        if (now - lastStepTime > MIN_STEP_INTERVAL) addStep();
+        isPeak = false;
+      }
+    }
+
+    function addStep() {
+      const d = today();
+      d.steps++;
+      S.total++;
+      if (S.activeWorkout && !S.activeWorkout.pausedAt) S.activeWorkout.steps++;
+      save();
+      renderLive(true);
+      checkAchievements();
+    }
+
+    function requestMotion() {
+      // На iOS нужно разрешение через жест пользователя
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        return DeviceMotionEvent.requestPermission().then((r) => {
+          if (r !== 'granted') throw new Error('Доступ к датчикам запрещён. Разрешите в настройках Safari.');
+        });
+      }
+      return Promise.resolve();
+    }
+
+    async function startTracking() {
+      if (isTracking) return true;
+      if (!S.demo) {
+        try { await requestMotion(); }
+        catch (err) { setStatus(err.message || 'Ошибка запроса доступа', true); return false; }
+        if (!listenerAdded) { window.addEventListener('devicemotion', handleMotion); listenerAdded = true; }
+      }
+      isTracking = true;
+      isPeak = false;
+      lastStepTime = 0;
+      motionSeen = false;
+
+      if (S.demo) demoTimer = setInterval(() => { if (Math.random() > .12) addStep(); }, 520);
+
+      // минуты активности
+      activeTimer = setInterval(() => { today().active += 1 / 6; save(); renderLive(); }, 10000);
+
+      // не даём экрану погаснуть — иначе датчики засыпают
+      try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+
+      setTimeout(() => {
+        if (isTracking && !S.demo && !motionSeen) setStatus('Датчик движения не отвечает. На ПК включите «Демо-режим» в профиле.', true);
+      }, 3000);
+
+      renderTracking();
+      return true;
+    }
+
+    function stopTracking() {
+      isTracking = false;
+      clearInterval(demoTimer); demoTimer = null;
+      clearInterval(activeTimer); activeTimer = null;
+      if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+      save(true);
+      renderTracking();
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+      if (!document.hidden && isTracking && 'wakeLock' in navigator) {
+        try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+      }
+    });
+
+    // ================================================================
+    //  ГЛАВНАЯ
+    // ================================================================
+    const RING_LEN = 2 * Math.PI * 108;
+    const stepsEl = $('steps');
+    const toggleBtn = $('toggle');
+
+    function setStatus(text, warn) {
+      const el = $('status');
+      el.classList.toggle('warn', !!warn);
+      el.innerHTML = text;
+    }
+
+    const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14z"/></svg>';
+    const ICON_STOP = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>';
+
+    function renderTracking() {
+      toggleBtn.classList.toggle('stop', isTracking);
+      toggleBtn.innerHTML = isTracking ? ICON_STOP + '<span>СТОП</span>' : ICON_PLAY + '<span>СТАРТ</span>';
+      $('ringWrap').classList.toggle('live', isTracking);
+      if (isTracking) setStatus('<span class="dot"></span>' + (S.demo ? 'Демо-режим: шаги симулируются' : 'Идёт подсчёт. Держите телефон в руке или кармане.'));
+      else setStatus(today().steps ? 'Пауза. Сегодня уже ' + fmt(today().steps) + ' ' + plural(today().steps, 'шаг', 'шага', 'шагов') : 'Нажмите «Старт» и разрешите доступ к движению');
+    }
+
+    function renderLive(bump) {
+      const d = today();
+      const pct = Math.min(d.steps / S.goal, 1);
+      stepsEl.textContent = fmt(d.steps);
+      if (bump) { stepsEl.classList.remove('tick'); void stepsEl.offsetWidth; stepsEl.classList.add('tick'); }
+      $('ring').style.strokeDashoffset = RING_LEN * (1 - pct);
+      $('barFill').style.width = (pct * 100) + '%';
+      $('pctTxt').textContent = Math.floor(d.steps / S.goal * 100) + '%';
+      $('kmTxt').textContent = (d.steps * STEP_LENGTH / 1000).toFixed(2);
+      $('kcalTxt').textContent = fmt(d.steps * 0.04);
+      $('minTxt').textContent = Math.floor(d.active);
+      renderWorkoutLive();
+      if (bump && Math.random() < .05) renderWeek(); // недорогое периодическое обновление графика
+    }
+
+    function renderWeek() {
+      const names = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      const list = [];
+      for (let i = 6; i >= 0; i--) {
+        const dt = new Date(); dt.setDate(dt.getDate() - i);
+        const rec = S.days[dayKey(dt)];
+        list.push({ name: names[dt.getDay()], steps: rec ? rec.steps : 0, today: i === 0 });
+      }
+      const max = Math.max(S.goal, ...list.map((x) => x.steps));
+      $('week').innerHTML = list.map((x) =>
+        `<div class="wday${x.today ? ' today' : ''}"><div class="wbar${x.steps ? ' on' : ''}${x.steps >= S.goal ? ' full' : ''}" style="height:${Math.max(6, x.steps / max * 92)}px" title="${fmt(x.steps)}"></div><span>${x.name}</span></div>`
+      ).join('');
+      const sum = list.reduce((a, x) => a + x.steps, 0);
+      $('weekTotal').textContent = fmt(sum) + ' ' + plural(sum, 'шаг', 'шага', 'шагов');
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      if (isTracking) {
+        if (S.activeWorkout) finishWorkout(); // остановка датчика завершает тренировку
+        stopTracking();
+        renderWeek();
+      } else {
+        startTracking();
+      }
+    });
+
+    // ================================================================
+    //  ТРЕНИРОВКИ
+    // ================================================================
+    let selMode = 'walk';
+    let workoutTick = null;
+    const MODES = { walk: { name: 'Ходьба', emoji: '🚶', kcal: 0.04 }, run: { name: 'Бег', emoji: '🏃', kcal: 0.065 } };
+
+    $('modes').addEventListener('click', (e) => {
+      const b = e.target.closest('.mode');
+      if (!b || S.activeWorkout) return;
+      selMode = b.dataset.mode;
+      document.querySelectorAll('.mode').forEach((m) => m.classList.toggle('sel', m === b));
+      $('timerCard').classList.toggle('run', selMode === 'run');
+    });
+
+    function workoutElapsed(w) {
+      const end = w.pausedAt || Date.now();
+      return Math.max(0, end - w.start - w.pausedTotal);
+    }
+    function fmtTime(ms) {
+      const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+      const mm = String(m).padStart(2, '0'), ss = String(sec).padStart(2, '0');
+      return h ? h + ':' + mm + ':' + ss : mm + ':' + ss;
+    }
+    function fmtDist(m) {
+      return m >= 1000 ? { v: (m / 1000).toFixed(2), u: 'км' } : { v: String(Math.round(m)), u: 'метров' };
+    }
+
+    async function beginWorkout() {
+      const ok = await startTracking();
+      if (!ok) { switchTab('home'); return; }
+      S.activeWorkout = { mode: selMode, start: Date.now(), steps: 0, pausedAt: null, pausedTotal: 0 };
+      save(true);
+      runWorkoutUI();
+    }
+
+    function togglePause() {
+      const w = S.activeWorkout;
+      if (!w) return;
+      if (w.pausedAt) { w.pausedTotal += Date.now() - w.pausedAt; w.pausedAt = null; }
+      else w.pausedAt = Date.now();
+      save(true);
+      renderWorkoutLive();
+    }
+
+    function finishWorkout() {
+      const w = S.activeWorkout;
+      if (!w) return;
+      const duration = workoutElapsed(w);
+      S.workouts.unshift({ mode: w.mode, date: w.start, duration, steps: w.steps, dist: w.steps * STEP_LENGTH });
+      S.workouts = S.workouts.slice(0, 30);
+      S.activeWorkout = null;
+      clearInterval(workoutTick); workoutTick = null;
+      save(true);
+      toast(MODES[w.mode].emoji, 'Тренировка завершена', fmtTime(duration) + ' · ' + fmt(w.steps) + ' шагов · ' + fmtDist(w.steps * STEP_LENGTH).v + ' ' + fmtDist(w.steps * STEP_LENGTH).u);
+      checkAchievements();
+      runWorkoutUI();
+      renderHistory();
+      renderProfile();
+    }
+
+    function runWorkoutUI() {
+      const w = S.activeWorkout;
+      const active = !!w;
+      if (active) selMode = w.mode;
+      document.querySelectorAll('.mode').forEach((m) => m.classList.toggle('sel', m.dataset.mode === selMode));
+      $('modes').classList.toggle('locked', active);
+      $('timerCard').classList.toggle('run', selMode === 'run');
+      $('wStart').classList.toggle('hidden', active);
+      $('wPause').classList.toggle('hidden', !active);
+      $('wStop').classList.toggle('hidden', !active);
+      clearInterval(workoutTick);
+      if (active) workoutTick = setInterval(renderWorkoutLive, 250);
+      renderWorkoutLive();
+      updateNavDot();
+    }
+
+    function renderWorkoutLive() {
+      const w = S.activeWorkout;
+      const card = $('timerCard');
+      card.classList.toggle('running', !!w && !w.pausedAt);
+      card.classList.toggle('paused', !!w && !!w.pausedAt);
+      if (!w) {
+        $('timer').textContent = '00:00';
+        $('wLabel').textContent = 'Готов к старту';
+        $('wDist').textContent = '0'; $('wDistUnit').textContent = 'метров';
+        $('wSteps').textContent = '0'; $('wPace').textContent = '—';
+        return;
+      }
+      const ms = workoutElapsed(w);
+      const dist = fmtDist(w.steps * STEP_LENGTH);
+      $('timer').textContent = fmtTime(ms);
+      $('wLabel').textContent = w.pausedAt ? 'Пауза' : (w.mode === 'run' ? 'Время бега' : 'Время ходьбы');
+      $('wDist').textContent = dist.v; $('wDistUnit').textContent = dist.u;
+      $('wSteps').textContent = fmt(w.steps);
+      $('wPace').textContent = ms > 10000 ? fmt(w.steps / (ms / 60000)) : '—';
+      $('wPause').innerHTML = w.pausedAt
+        ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14z"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>';
+    }
+
+    function renderHistory() {
+      const list = S.workouts;
+      $('histCount').textContent = list.length ? list.length + ' ' + plural(list.length, 'запись', 'записи', 'записей') : '';
+      if (!list.length) { $('history').innerHTML = '<div class="empty">Здесь появятся ваши тренировки</div>'; return; }
+      $('history').innerHTML = list.slice(0, 8).map((w, i) => {
+        const d = new Date(w.date);
+        const dist = fmtDist(w.dist);
+        const when = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        return `<div class="h-item ${w.mode}" style="animation-delay:${i * 40}ms"><div class="em">${MODES[w.mode].emoji}</div><div class="info"><b>${MODES[w.mode].name} · ${fmtTime(w.duration)}</b><small>${when}</small></div><div class="val">${dist.v} ${dist.u === 'км' ? 'км' : 'м'}<small>${fmt(w.steps)} шагов</small></div></div>`;
+      }).join('');
+    }
+
+    $('wStart').addEventListener('click', beginWorkout);
+    $('wPause').addEventListener('click', togglePause);
+    $('wStop').addEventListener('click', finishWorkout);
+
+    // ================================================================
+    //  ДОСТИЖЕНИЯ
+    // ================================================================
+    const ACHIEVEMENTS = [
+      { id: 'first', icon: '👣', title: 'Первый шаг', desc: 'Сделайте свой первый шаг', coins: 10, prog: () => [S.total, 1] },
+      { id: 'k1', icon: '🚀', title: '1 000 шагов', desc: 'Пройдите 1 000 шагов всего', coins: 50, prog: () => [S.total, 1000] },
+      { id: 'k5', icon: '⚡', title: '5 000 шагов', desc: 'Пройдите 5 000 шагов всего', coins: 150, prog: () => [S.total, 5000] },
+      { id: 'k10', icon: '👑', title: '10 000 шагов', desc: 'Пройдите 10 000 шагов за один день', coins: 300, prog: () => [Math.max(0, ...Object.values(S.days).map((d) => d.steps)), 10000] },
+      { id: 'work', icon: '🔥', title: 'Атлет', desc: 'Завершите первую тренировку', coins: 100, prog: () => [S.workouts.length, 1] }
+    ];
+
+    function checkAchievements() {
+      let changed = false;
+      ACHIEVEMENTS.forEach((a) => {
+        if (S.ach[a.id]) return;
+        const [v, t] = a.prog();
+        if (v >= t) {
+          S.ach[a.id] = Date.now();
+          S.coins += a.coins;
+          changed = true;
+          toast(a.icon, 'Достижение: ' + a.title, '+' + a.coins + ' очков');
+          confetti();
+        }
+      });
+      if (changed) { save(true); renderCoins(true); renderAchievements(); renderShop(); updateNavDot(true); }
+      else if (currentTab === 'ach') renderAchievements();
+    }
+
+    function renderAchievements() {
+      const done = ACHIEVEMENTS.filter((a) => S.ach[a.id]).length;
+      $('achCount').textContent = done + '/' + ACHIEVEMENTS.length;
+      $('achList').innerHTML = ACHIEVEMENTS.map((a, i) => {
+        const [v, t] = a.prog();
+        const isDone = !!S.ach[a.id];
+        const pct = isDone ? 100 : Math.min(100, v / t * 100);
+        return `<div class="glass ach${isDone ? ' done' : ''}" style="animation:tabIn .45s var(--ease) ${i * 60}ms both">
+          <div class="badge">${a.icon}</div>
+          <div class="body"><b>${a.title}</b><small>${isDone ? 'Получено ' + new Date(S.ach[a.id]).toLocaleDateString('ru-RU') : a.desc + ' · ' + fmt(Math.min(v, t)) + '/' + fmt(t)}</small><div class="mini-track"><i style="width:${pct}%"></i></div></div>
+          <div class="reward">${a.coins}<div class="coin">S</div></div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderCoins(bump) {
+      $('coinTop').textContent = fmt(S.coins);
+      $('coinBig').textContent = fmt(S.coins);
+      if (bump) { const p = $('coinPill'); p.classList.add('bump'); setTimeout(() => p.classList.remove('bump'), 300); }
+    }
+
+    // ================================================================
+    //  ПРОФИЛЬ И МАГАЗИН
+    // ================================================================
+    const SHOP = {
+      frame: [
+        { id: 'f-none', cls: 'fr-none', name: 'Базовая', price: 0 },
+        { id: 'f-neon', cls: 'fr-neon', name: 'Неон', price: 50 },
+        { id: 'f-gold', cls: 'fr-gold', name: 'Золото', price: 120 },
+        { id: 'f-rainbow', cls: 'fr-rainbow', name: 'Радуга', price: 250 },
+        { id: 'f-fire', cls: 'fr-fire', name: 'Пламя', price: 400 }
+      ],
+      bg: [
+        { id: 'b-none', cls: 'bg-none', name: 'Ночь', price: 0 },
+        { id: 'b-aurora', cls: 'bg-aurora', name: 'Аврора', price: 60 },
+        { id: 'b-sunset', cls: 'bg-sunset', name: 'Закат', price: 100 },
+        { id: 'b-ocean', cls: 'bg-ocean', name: 'Океан', price: 150 },
+        { id: 'b-cyber', cls: 'bg-cyber', name: 'Кибер', price: 300 }
+      ]
+    };
+    const RANKS = ['Новичок', 'Пешеход', 'Путник', 'Ходок', 'Марафонец', 'Скороход', 'Легенда'];
+    const XP_PER_LEVEL = 2000;
+    let shopCat = 'frame';
+
+    function findItem(id) { return SHOP.frame.concat(SHOP.bg).find((x) => x.id === id) || SHOP.frame[0]; }
+
+    function renderProfile() {
+      const name = S.name.trim();
+      $('helloName').textContent = name || 'Атлет';
+      const initials = name ? name.split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase() : '?';
+      $('avaTxt').textContent = initials;
+      if (document.activeElement !== $('nameInput')) $('nameInput').value = S.name;
+
+      const level = Math.floor(S.total / XP_PER_LEVEL) + 1;
+      const into = S.total % XP_PER_LEVEL;
+      $('lvlBadge').textContent = 'LV ' + level;
+      $('xpLbl').textContent = 'Уровень ' + level;
+      $('xpTxt').textContent = fmt(into) + ' / ' + fmt(XP_PER_LEVEL);
+      $('xpFill').style.width = (into / XP_PER_LEVEL * 100) + '%';
+      $('rankTxt').textContent = RANKS[Math.min(level - 1, RANKS.length - 1)];
+
+      $('pTotal').textContent = S.total >= 10000 ? (S.total / 1000).toFixed(1) + 'k' : fmt(S.total);
+      $('pKm').textContent = (S.total * STEP_LENGTH / 1000).toFixed(1);
+      $('pWork').textContent = S.workouts.length;
+
+      $('avaFrame').className = 'ava-frame ' + findItem(S.frame).cls;
+      $('pbg').className = 'pbg ' + findItem(S.bg).cls;
+    }
+
+    function renderShop() {
+      const cur = shopCat === 'frame' ? S.frame : S.bg;
+      $('shop').innerHTML = SHOP[shopCat].map((it, i) => {
+        const owned = S.owned.includes(it.id);
+        const eq = cur === it.id;
+        const prev = shopCat === 'frame' ? `<div class="prev ring ${it.cls}"><i></i></div>` : `<div class="prev swatch ${it.cls}" style="background-color:#12121c"></div>`;
+        const price = eq ? 'Надето' : owned ? 'Выбрать' : `${it.price}<span class="coin">S</span>`;
+        return `<button class="item${owned ? ' owned' : ''}${eq ? ' equipped' : ''}${!owned && S.coins < it.price ? ' cant' : ''}" data-id="${it.id}" style="animation-delay:${i * 40}ms">${prev}<b>${it.name}</b><span class="price">${price}</span></button>`;
+      }).join('');
+    }
+
+    $('shop').addEventListener('click', (e) => {
+      const b = e.target.closest('.item');
+      if (!b) return;
+      const it = findItem(b.dataset.id);
+      const slot = shopCat === 'frame' ? 'frame' : 'bg';
+      if (S.owned.includes(it.id)) {
+        S[slot] = it.id;
+      } else if (S.coins >= it.price) {
+        openModal({
+          icon: '🛍️', title: 'Купить «' + it.name + '»?', text: 'Стоимость: ' + it.price + ' очков. На счету: ' + fmt(S.coins) + '.',
+          actions: [
+            { label: 'Отмена', ghost: true },
+            { label: 'Купить', onClick: () => {
+              S.coins -= it.price; S.owned.push(it.id); S[slot] = it.id;
+              save(true); renderCoins(true); renderShop(); renderProfile();
+              toast('✨', 'Покупка: ' + it.name, 'Уже применено к профилю');
+            } }
+          ]
+        });
+        return;
+      } else {
+        toast('🪙', 'Не хватает очков', 'Нужно ещё ' + (it.price - S.coins) + ' — открывайте достижения!');
+        return;
+      }
+      save(true); renderShop(); renderProfile();
+    });
+
+    $('seg').addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      shopCat = b.dataset.cat;
+      $('seg').classList.toggle('right', shopCat === 'bg');
+      $('seg').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+      renderShop();
+    });
+
+    $('nameInput').addEventListener('input', (e) => { S.name = e.target.value; save(); renderProfile(); renderGreeting(); });
+    $('nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
+
+    // Настройки
+    function renderSettings() {
+      $('goalVal').textContent = fmt(S.goal);
+      $('goalTxt').textContent = fmt(S.goal);
+      $('demoSw').classList.toggle('on', S.demo);
+    }
+    function changeGoal(delta) {
+      S.goal = Math.min(30000, Math.max(1000, S.goal + delta));
+      save(); renderSettings(); renderLive(); renderWeek();
+    }
+    $('goalMinus').addEventListener('click', () => changeGoal(-1000));
+    $('goalPlus').addEventListener('click', () => changeGoal(1000));
+    $('demoSw').addEventListener('click', () => {
+      const was = isTracking;
+      if (was) stopTracking();
+      S.demo = !S.demo;
+      save(true); renderSettings();
+      if (was) startTracking();
+    });
+    $('resetBtn').addEventListener('click', () => openModal({
+      icon: '⚠️', title: 'Сбросить все данные?', text: 'Шаги, очки, достижения и покупки будут удалены без возможности восстановления.',
+      actions: [
+        { label: 'Отмена', ghost: true },
+        { label: 'Сбросить', danger: true, onClick: () => {
+          if (isTracking) stopTracking();
+          S = defaults(); save(true); renderAll(); runWorkoutUI();
+          toast('🧹', 'Данные сброшены', 'Начинаем с чистого листа');
+        } }
+      ]
+    }));
+
+    // Заглушки для друзей
+    document.querySelectorAll('[data-stub]').forEach((b) => b.addEventListener('click', () => openModal({
+      icon: '👥', title: b.textContent.trim(), text: 'Для синхронизации с друзьями нужен сервер. Скоро!', actions: [{ label: 'Понятно' }]
+    })));
+
+    // ================================================================
+    //  МОДАЛКА, ТОСТЫ, КОНФЕТТИ
+    // ================================================================
+    function openModal({ icon, title, text, actions }) {
+      $('mIco').textContent = icon;
+      $('mTitle').textContent = title;
+      $('mText').textContent = text;
+      const box = $('mActions');
+      box.innerHTML = '';
+      actions.forEach((a) => {
+        const btn = document.createElement('button');
+        btn.className = a.ghost ? 'btn-ghost' : 'btn-main' + (a.danger ? ' stop' : '');
+        btn.textContent = a.label;
+        btn.addEventListener('click', () => { closeModal(); if (a.onClick) a.onClick(); });
+        box.appendChild(btn);
+      });
+      $('modal').classList.add('open');
+    }
+    function closeModal() { $('modal').classList.remove('open'); }
+    $('modal').addEventListener('click', (e) => { if (e.target.hasAttribute('data-close')) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+    function toast(icon, title, text) {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<div class="t-ico"></div><div><b></b><small></small></div>`;
+      t.querySelector('.t-ico').textContent = icon;
+      t.querySelector('b').textContent = title;
+      t.querySelector('small').textContent = text;
+      $('toasts').appendChild(t);
+      if (navigator.vibrate) navigator.vibrate(40);
+      setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 400); }, 3200);
+    }
+
+    function confetti() {
+      const colors = ['#c6ff3d', '#22e3ff', '#ff3d9a', '#7b5cff', '#ffc21a'];
+      for (let i = 0; i < 40; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.background = colors[i % colors.length];
+        c.style.animationDuration = 1.6 + Math.random() * 1.6 + 's';
+        c.style.animationDelay = Math.random() * .3 + 's';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 3600);
+      }
+    }
+
+    // ================================================================
+    //  НАВИГАЦИЯ
+    // ================================================================
+    const TABS = ['home', 'workout', 'ach', 'profile'];
+    let currentTab = 'home';
+
+    function switchTab(name) {
+      if (name === currentTab) return;
+      currentTab = name;
+      document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
+      document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+      $('navPill').style.transform = 'translateX(' + (TABS.indexOf(name) * 100) + '%)';
+      if (name === 'ach') { renderAchievements(); S.seenAch = Object.keys(S.ach).length; save(); updateNavDot(); }
+      if (name === 'profile') { renderProfile(); renderShop(); }
+      if (name === 'home') renderWeek();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    $('nav').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) switchTab(b.dataset.tab); });
+
+    function updateNavDot() {
+      const marks = { workout: !!S.activeWorkout, ach: Object.keys(S.ach).length > (S.seenAch || 0) && currentTab !== 'ach' };
+      document.querySelectorAll('#nav button').forEach((b) => {
+        let dot = b.querySelector('.ndot');
+        const need = marks[b.dataset.tab];
+        if (need && !dot) { dot = document.createElement('i'); dot.className = 'ndot'; b.appendChild(dot); }
+        if (!need && dot) dot.remove();
+      });
+    }
+
+    function renderGreeting() {
+      const h = new Date().getHours();
+      $('greet').textContent = h < 5 ? 'Доброй ночи' : h < 12 ? 'Доброе утро' : h < 18 ? 'Добрый день' : 'Добрый вечер';
+    }
+
+    function renderAll() {
+      renderGreeting(); renderSettings(); renderCoins(); renderLive(); renderWeek();
+      renderHistory(); renderAchievements(); renderProfile(); renderShop(); renderTracking(); updateNavDot();
+    }
+
+    // ================================================================
+    //  СТАРТ
+    // ================================================================
+    renderAll();
+    if (S.activeWorkout) {
+      // Тренировка восстановлена после перезагрузки — ставим на паузу, пока пользователь не продолжит
+      if (!S.activeWorkout.pausedAt) S.activeWorkout.pausedAt = Date.now();
+      runWorkoutUI();
+      setStatus('Тренировка на паузе. Откройте «Тренировки», чтобы продолжить.', true);
+    }
+    // Продолжение тренировки после перезагрузки требует включить датчик
+    $('wPause').addEventListener('click', () => { if (S.activeWorkout && !S.activeWorkout.pausedAt && !isTracking) startTracking(); });
+
+    // Смена суток во время работы приложения
+    let lastDay = dayKey();
+    setInterval(() => { const k = dayKey(); if (k !== lastDay) { lastDay = k; renderAll(); } }, 60000);
+
+    // PWA: офлайн-кеш (работает при размещении на сервере, рядом с sw.js)
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
+  </script>
+</body>
+</html>
