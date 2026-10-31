@@ -1016,6 +1016,146 @@
 
     /* Лимитированный шрифт */
     .big-num.fn-gold { background: linear-gradient(180deg, #fff6c4, #ffc21a 55%, #b07800); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 10px rgba(255, 194, 26, .5)); }
+
+    /* ===== Кейсы (лутбоксы) на вкладке «Достижения» ===== */
+    .cases-card { padding-bottom: 8px; }
+    .cases-row {
+      display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+      margin: -12px -18px 0; padding: 14px 18px 18px; scrollbar-width: none; overscroll-behavior-x: contain;
+    }
+    .cases-row::-webkit-scrollbar { display: none; }
+    .case-card {
+      --c1: #9aa3b8; --c2: #5d6478; --glow: rgba(160, 175, 205, .35);
+      position: relative; flex: 0 0 148px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 14px 12px 12px; border-radius: 22px; text-align: center; isolation: isolate; overflow: hidden;
+      background: linear-gradient(165deg, color-mix(in srgb, var(--c1) 22%, transparent), rgba(255, 255, 255, .03) 60%), rgba(18, 18, 28, .85);
+      border: 1px solid color-mix(in srgb, var(--c1) 45%, transparent);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, .02), 0 8px 26px -10px var(--glow);
+      animation: tabIn .45s var(--ease) both; transition: transform .25s var(--ease), box-shadow .3s;
+    }
+    .case-card.t-rare { --c1: #a58bff; --c2: #22e3ff; --glow: rgba(123, 92, 255, .6); }
+    .case-card.t-epic { --c1: #ffc21a; --c2: #ff3d9a; --glow: rgba(255, 170, 40, .7); }
+    .case-card.t-rare { box-shadow: 0 0 0 1px rgba(123, 92, 255, .25), 0 0 22px -4px var(--glow); }
+    .case-card.t-epic { box-shadow: 0 0 0 1px rgba(255, 194, 26, .35), 0 0 30px -2px var(--glow), inset 0 0 24px rgba(255, 140, 40, .12); animation: tabIn .45s var(--ease) both, epicGlow 2.4s ease-in-out infinite alternate; }
+    @keyframes epicGlow { to { box-shadow: 0 0 0 1px rgba(255, 194, 26, .6), 0 0 42px 2px rgba(255, 61, 154, .55), inset 0 0 30px rgba(255, 140, 40, .2); } }
+    .case-card::after {
+      content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+      background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, .1) 50%, transparent 65%);
+      transform: translateX(-110%); animation: sweep 3.6s ease-in-out infinite;
+    }
+    .case-card.t-common::after { animation-duration: 5s; opacity: .6; }
+    .case-tier { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--c1); }
+    .case-ico {
+      width: 70px; height: 70px; margin: 4px 0 2px; border-radius: 22px; display: grid; place-items: center; font-size: 38px; line-height: 1;
+      background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--c1) 40%, transparent), transparent 70%), rgba(255, 255, 255, .04);
+      border: 1px solid color-mix(in srgb, var(--c1) 35%, transparent);
+      box-shadow: 0 0 24px -6px var(--glow); will-change: transform;
+    }
+    .case-card b.case-name { font-family: var(--display); font-size: 13px; font-weight: 700; line-height: 1.2; min-height: 32px; display: grid; place-items: center; overflow-wrap: anywhere; }
+    .case-price { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .case-price .coin { width: 16px; height: 16px; font-size: 8px; box-shadow: none; }
+    .case-open {
+      width: 100%; height: 38px; margin-top: 4px; border-radius: 13px; font-family: var(--display); font-size: 12px; font-weight: 700; color: #07130a;
+      background: linear-gradient(135deg, var(--c1), var(--c2)); box-shadow: 0 6px 18px -6px var(--glow); transition: transform .2s var(--ease), opacity .3s, filter .3s;
+    }
+    .case-card.t-common .case-open { color: #0b0c12; background: linear-gradient(135deg, #e4e8f2, #9aa3b8); }
+    .case-open:active { transform: scale(.95); }
+    .case-card.cant .case-open { filter: grayscale(.85); opacity: .55; }
+    .case-info {
+      position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; font-size: 12px; font-weight: 800;
+      color: var(--muted); background: rgba(255, 255, 255, .06); border: 1px solid var(--border);
+    }
+    .case-card.opening { transform: scale(1.04); z-index: 1; }
+    .case-card.opening .case-ico { animation: caseShake 1.5s cubic-bezier(.36, .07, .19, .97) both; }
+    .case-card.opening .case-open { opacity: .6; }
+    @keyframes caseShake {
+      0% { transform: none; }
+      8% { transform: translateX(-3px) rotate(-6deg); } 16% { transform: translateX(3px) rotate(6deg); }
+      24% { transform: translateX(-4px) rotate(-9deg) scale(1.04); } 32% { transform: translateX(4px) rotate(9deg) scale(1.06); }
+      40% { transform: translateX(-5px) rotate(-12deg) scale(1.08); } 48% { transform: translateX(5px) rotate(12deg) scale(1.1); }
+      56% { transform: translateX(-6px) rotate(-14deg) scale(1.13); } 64% { transform: translateX(6px) rotate(14deg) scale(1.16); }
+      72% { transform: translateX(-6px) rotate(-12deg) scale(1.2); } 80% { transform: translateX(6px) rotate(12deg) scale(1.24); }
+      88% { transform: translateX(-3px) rotate(-6deg) scale(1.3); }
+      100% { transform: scale(1.45); opacity: 0; filter: brightness(2.2); }
+    }
+    .case-card.opening::before {
+      content: ''; position: absolute; inset: -20%; z-index: -1; pointer-events: none; opacity: 0;
+      background: radial-gradient(circle at 50% 30%, var(--glow), transparent 60%); animation: caseCharge 1.5s ease-in forwards;
+    }
+    @keyframes caseCharge { to { opacity: 1; transform: scale(1.15); } }
+
+    /* Окно с выпавшей наградой: fade-in + scale */
+    .case-modal { align-items: center; }
+    .case-modal .sheet { transform: scale(.82); opacity: 0; transition: transform .5s cubic-bezier(.3, 1.4, .5, 1), opacity .35s ease; overflow: hidden; isolation: isolate; }
+    .case-modal.open .sheet { transform: none; opacity: 1; }
+    .case-modal .sheet::before {
+      content: ''; position: absolute; left: 50%; top: 110px; width: 520px; height: 520px; margin: -260px 0 0 -260px; z-index: -1; pointer-events: none; opacity: .5;
+      background: repeating-conic-gradient(from 0deg, var(--cr-glow, rgba(198, 255, 61, .25)) 0 10deg, transparent 10deg 30deg);
+      -webkit-mask-image: radial-gradient(circle, #000 20%, transparent 62%); mask-image: radial-gradient(circle, #000 20%, transparent 62%);
+      animation: spin 14s linear infinite;
+    }
+    .case-modal .cr-tag { display: inline-block; margin-bottom: 10px; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--cr-c, var(--lime)); background: rgba(255, 255, 255, .06); border: 1px solid var(--border); }
+    .cr-prev { height: 132px; display: grid; place-items: center; margin: 4px 0 14px; }
+    .case-modal.open .cr-prev > * { animation: crPop .7s cubic-bezier(.3, 1.6, .5, 1) .15s both; }
+    @keyframes crPop { from { opacity: 0; transform: scale(.3) rotate(-12deg); } to { opacity: 1; transform: none; } }
+    .cr-coins { font-size: 64px; line-height: 1; filter: drop-shadow(0 0 24px rgba(255, 194, 26, .7)); }
+    .cr-ring { position: relative; width: 116px; height: 116px; border-radius: 50%; padding: 5px; }
+    .cr-ring::before { content: ''; position: absolute; inset: 0; border-radius: 50%; }
+    .cr-ring i { position: relative; display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; background: #14141f; border: 3px solid var(--bg); font-style: normal; font-size: 34px; }
+    .cr-swatch { position: relative; width: 170px; height: 110px; border-radius: 22px; overflow: hidden; border: 1px solid var(--border); background-color: #12121c; }
+    .cr-font { font-size: 60px !important; }
+    .case-modal h3 { font-size: 22px; }
+    .cr-odds { margin-top: 6px; font-size: 12px; color: var(--dim); font-weight: 700; }
+
+    /* Новые лимитированные предметы из кейсов */
+    .fr-void::before {
+      background: conic-gradient(from 0deg, #000, #3a0d6b, #000, #7b5cff, #000, #22004a, #000);
+      animation: spin 3.2s linear infinite, voidPulse 2s ease-in-out infinite alternate;
+      box-shadow: 0 0 0 2px rgba(123, 92, 255, .55), 0 0 26px rgba(90, 30, 180, .8);
+    }
+    @keyframes voidPulse { to { box-shadow: 0 0 0 2px rgba(180, 140, 255, .8), 0 0 44px rgba(123, 92, 255, 1), 0 0 90px rgba(40, 0, 90, .8); } }
+    .fr-phoenix::before {
+      background: conic-gradient(from 0deg, #ff3d00, #ffc21a, #fff1a8, #ff8a3d, #ff3d9a, #ff3d00);
+      animation: spin 2.2s linear infinite, phoenixGlow 1.2s ease-in-out infinite alternate;
+      box-shadow: 0 0 26px rgba(255, 110, 30, .85);
+    }
+    @keyframes phoenixGlow { to { box-shadow: 0 0 44px rgba(255, 170, 40, 1), 0 0 90px rgba(255, 61, 0, .5); } }
+    .bg-void, .bg-nebula { overflow: hidden; }
+    .bg-void { background: radial-gradient(circle at 50% 55%, #000 0 18%, rgba(123, 92, 255, .9) 21%, rgba(60, 10, 120, .5) 32%, transparent 58%), radial-gradient(80% 60% at 50% 55%, rgba(34, 227, 255, .18), transparent 70%), linear-gradient(180deg, #08020f, #000); }
+    .bg-void::before {
+      content: ''; position: absolute; inset: -30%; pointer-events: none; animation: spin 16s linear infinite;
+      background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(123, 92, 255, .22) 0 6deg, transparent 6deg 24deg);
+      -webkit-mask-image: radial-gradient(circle, transparent 14%, #000 22%, transparent 60%); mask-image: radial-gradient(circle, transparent 14%, #000 22%, transparent 60%);
+    }
+    .bg-nebula { background: radial-gradient(45% 40% at 25% 35%, rgba(34, 227, 255, .55), transparent 70%), radial-gradient(45% 45% at 75% 65%, rgba(255, 61, 154, .55), transparent 70%), radial-gradient(35% 30% at 55% 30%, rgba(198, 255, 61, .3), transparent 70%), linear-gradient(180deg, #0a0820, #04030c); }
+    .bg-nebula::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; animation: twinkle 1.8s ease-in-out infinite alternate;
+      background-image: radial-gradient(1.4px 1.4px at 20% 70%, #fff 50%, transparent 55%), radial-gradient(1.6px 1.6px at 62% 22%, #fff 50%, transparent 55%), radial-gradient(1.2px 1.2px at 88% 40%, #cfe9ff 50%, transparent 55%), radial-gradient(1.4px 1.4px at 40% 52%, #ffe0f0 50%, transparent 55%);
+    }
+    .big-num.fn-plasma {
+      background: linear-gradient(90deg, #22e3ff, #7b5cff, #ff3d9a, #22e3ff) 0 0 / 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 0 10px rgba(123, 92, 255, .7)); animation: plasmaFlow 3s linear infinite;
+    }
+    @keyframes plasmaFlow { to { background-position: 300% 0; } }
+
+    /* Админка: управление кейсами */
+    .adm-cases { display: flex; flex-direction: column; gap: 10px; max-height: 560px; overflow-y: auto; }
+    .adm-case { display: flex; flex-direction: column; gap: 8px; }
+    .adm-case-row { display: grid; grid-template-columns: 58px 1fr 92px; gap: 8px; }
+    .adm-case-row.two { grid-template-columns: 1fr 1fr; }
+    .adm-case .f-field input.ac-icon { text-align: center; font-size: 22px; padding: 0 4px; }
+    .f-field textarea {
+      min-height: 64px; padding: 10px 12px; border-radius: 14px; font: inherit; font-size: 13px; font-weight: 700; color: var(--text); resize: vertical; line-height: 1.45;
+      background: var(--surface-2); border: 1px solid var(--border); outline: none; transition: border-color .3s; width: 100%; min-width: 0;
+    }
+    .f-field textarea:focus { border-color: var(--cyan); }
+    .f-field textarea.bad { border-color: #ff3d6e; }
+    .adm-case .adm-note { margin-top: 0; min-height: 0; }
+    .adm-case-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; color: var(--muted); }
+    .adm-case-head .chip-btn { margin-left: auto; font-size: 12px; padding: 6px 10px; }
+    .adm-cases-hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
+    .adm-cases-hint code { color: var(--lime); font-weight: 700; }
+    .lite .case-card, .lite .case-card::after, .lite .case-modal .sheet::before { animation: none !important; }
   </style>
 </head>
 <body>
@@ -1225,6 +1365,10 @@
         <div class="dc-body"><b>Колесо фортуны</b><small id="wheelOpenSub">Призы: 5, 10, 20 или 50 монет</small></div>
         <div class="dc-cta" id="wheelOpenCta">Крутить колесо</div>
       </button>
+      <div class="glass card cases-card">
+        <div class="card-title"><h2>Кейсы</h2><span>листайте →</span></div>
+        <div class="cases-row" id="casesRow"></div>
+      </div>
       <div class="ach-list" id="achList"></div>
     </section>
 
@@ -1407,6 +1551,16 @@
           <button class="chip-btn adm-gold" id="admSkin">Выдать себе Админ-скин</button>
         </div>
       </div>
+
+      <div class="glass card">
+        <div class="card-title"><h2>Управление кейсами</h2><span id="admCasesCount">0 кейсов</span></div>
+        <p class="adm-cases-hint">Награды — через запятую: <code>coins:100</code>, <code>frame:f-neon</code>, <code>bg:b-space</code>, <code>font:n-gold</code>. Вес (шанс) — через звёздочку: <code>coins:500*40</code>, без веса — 1.<br>Предметы: <span id="admCasesIds"></span></p>
+        <div class="adm-cases" id="admCases"></div>
+        <div class="adm-actions" style="margin-top:12px">
+          <button class="chip-btn" id="admCaseAdd">+ Добавить кейс</button>
+          <button class="chip-btn adm-danger" id="admCaseReset">Сбросить к стандартным (10)</button>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -1457,6 +1611,22 @@
       </form>
       <div class="fs-result" id="friendResult"></div>
       <div class="m-actions"><button type="button" class="btn-ghost" data-friend-close>Закрыть</button></div>
+    </div>
+  </div>
+
+  <!-- ===== Награда из кейса ===== -->
+  <div class="modal case-modal" id="caseModal" role="dialog" aria-modal="true" aria-labelledby="crTitle">
+    <div class="shade" data-case-close></div>
+    <div class="glass sheet">
+      <span class="cr-tag" id="crTag">Обычный кейс</span>
+      <div class="cr-prev" id="crPrev"></div>
+      <h3 id="crTitle">Награда</h3>
+      <p id="crText"></p>
+      <div class="cr-odds" id="crOdds"></div>
+      <div class="m-actions">
+        <button class="btn-ghost" data-case-close>Закрыть</button>
+        <button class="btn-main" id="crAgain">Открыть ещё</button>
+      </div>
     </div>
   </div>
 
@@ -1637,8 +1807,46 @@
         streak: { count: 0, lastDate: null }, // дни подряд с выполненной целью; lastDate — последний такой день
         nickname: null,              // уникальный ник в Firestore (null — не задан)
         friends: [],                 // uid друзей
-        friendRequests: []           // входящие запросы: { id, from, fromNick } (обновляются из Firestore)
+        friendRequests: [],          // входящие запросы: { id, from, fromNick } (обновляются из Firestore)
+        cases: defaultCases()        // кейсы (лутбоксы), настраиваются в админ-панели
       };
+    }
+
+    // Кейсы (лутбоксы) по умолчанию. rewards — строка «тип:значение*вес» через запятую,
+    // её же редактирует админ. tier — оформление карточки: common | rare | epic.
+    function defaultCases() {
+      return [
+        { id: 'c-start', name: 'Стартовый', icon: '📦', price: 500, tier: 'common', rewards: 'coins:200*40, coins:400*30, coins:800*14, frame:f-neon*8, bg:b-aurora*8' },
+        { id: 'c-sport', name: 'Спортивный', icon: '🏃', price: 750, tier: 'common', rewards: 'coins:300*40, coins:700*25, coins:1200*8, frame:f-gold*9, bg:b-sunset*9, font:n-neon*9' },
+        { id: 'c-neon', name: 'Неоновый', icon: '💡', price: 1000, tier: 'common', rewards: 'coins:500*40, coins:1200*16, coins:2000*6, frame:f-rainbow*13, bg:b-cyber*13, font:n-pixel*12' },
+        { id: 'c-retro', name: 'Ретро', icon: '🕹️', price: 1500, tier: 'rare', rewards: 'coins:800*36, coins:2000*14, frame:f-pixel*14, bg:b-retro*14, bg:b-matrix*12, font:n-serif*10' },
+        { id: 'c-fire', name: 'Огненный', icon: '🔥', price: 2000, tier: 'rare', rewards: 'coins:1000*36, coins:3000*12, frame:f-fire*22, font:n-sunset*22, frame:f-phoenix*4' },
+        { id: 'c-crystal', name: 'Кристальный', icon: '💎', price: 2500, tier: 'rare', rewards: 'coins:1200*36, coins:3500*12, frame:f-crystal*22, bg:b-space*22, font:n-plasma*4, bg:b-nebula*4' },
+        { id: 'c-cosmos', name: 'Космический', icon: '🚀', price: 3000, tier: 'epic', rewards: 'coins:1500*32, coins:5000*10, frame:f-cosmic*24, bg:b-galaxy*24, bg:b-nebula*10' },
+        { id: 'c-royal', name: 'Королевский', icon: '👑', price: 3500, tier: 'epic', rewards: 'coins:1800*32, coins:6000*10, frame:f-royal*24, bg:b-mountain*24, font:n-gold*6, bg:b-vip*4' },
+        { id: 'c-void', name: 'Бездна', icon: '🕳️', price: 4000, tier: 'epic', rewards: 'coins:2000*34, coins:8000*8, frame:f-void*20, bg:b-void*20, font:n-plasma*18' },
+        { id: 'c-legend', name: 'Легендарный', icon: '🐉', price: 5000, tier: 'epic', rewards: 'coins:2500*28, coins:10000*8, frame:f-legend*10, frame:f-phoenix*12, bg:b-void*12, bg:b-nebula*12, font:n-gold*9, font:n-plasma*9' }
+      ];
+    }
+    const CASE_TIERS = ['common', 'rare', 'epic'];
+    // Приводит список кейсов к рабочему виду; null/не массив — стандартные 10 кейсов
+    function normalizeCases(list) {
+      if (!Array.isArray(list)) return defaultCases();
+      const ids = new Set();
+      return list.filter((c) => c && typeof c === 'object').map((c, i) => {
+        let id = typeof c.id === 'string' && c.id ? c.id : 'c-' + Date.now().toString(36) + i;
+        while (ids.has(id)) id += 'x';
+        ids.add(id);
+        const price = Math.round(Number(c.price));
+        return {
+          id,
+          name: String(c.name || 'Кейс').slice(0, 40),
+          icon: String(c.icon || '🎁').slice(0, 8),
+          price: Number.isFinite(price) && price >= 0 ? Math.min(price, 1000000) : 500,
+          tier: CASE_TIERS.includes(c.tier) ? c.tier : 'common',
+          rewards: typeof c.rewards === 'string' ? c.rewards.slice(0, 1000) : ''
+        };
+      });
     }
 
     // Приводит сохранённый объект к актуальной структуре S (используется при загрузке и импорте копии)
@@ -1657,6 +1865,7 @@
       if (!s.pets.includes('chicken')) s.pets.unshift('chicken');
       if (!s.pets.includes(s.petType)) s.petType = 'chicken';
       ['workoutsDone', 'foodAdded'].forEach((k) => { if (!Number.isFinite(s[k]) || s[k] < 0) s[k] = 0; });
+      s.cases = normalizeCases(saved && typeof saved === 'object' ? saved.cases : null);
       return s;
     }
     function load() {
@@ -2236,6 +2445,7 @@
     function renderCoins(bump) {
       $('coinTop').textContent = fmt(S.coins);
       $('coinBig').textContent = fmt(S.coins);
+      markCaseAfford();
       if (bump) { const p = $('coinPill'); p.classList.add('bump'); setTimeout(() => p.classList.remove('bump'), 300); }
     }
 
@@ -2293,7 +2503,13 @@
       { id: 'f-admin', cls: 'fr-admin', name: 'Админ', price: 0, slot: 'frame' },
       { id: 'f-legend', cls: 'fr-legend', name: 'Легенда', price: 0, slot: 'frame' },
       { id: 'b-vip', cls: 'bg-vip', name: 'VIP', price: 0, slot: 'bg' },
-      { id: 'n-gold', cls: 'fn-gold', name: 'Золотой', price: 0, slot: 'font' }
+      { id: 'n-gold', cls: 'fn-gold', name: 'Золотой', price: 0, slot: 'font' },
+      // выпадают только из кейсов (и выдаются из админки), за монеты не продаются
+      { id: 'f-void', cls: 'fr-void', name: 'Бездна', price: 0, slot: 'frame', caseOnly: true },
+      { id: 'f-phoenix', cls: 'fr-phoenix', name: 'Феникс', price: 0, slot: 'frame', caseOnly: true },
+      { id: 'b-void', cls: 'bg-void', name: 'Бездна', price: 0, slot: 'bg', caseOnly: true },
+      { id: 'b-nebula', cls: 'bg-nebula', name: 'Туманность', price: 0, slot: 'bg', caseOnly: true },
+      { id: 'n-plasma', cls: 'fn-plasma', name: 'Плазма', price: 0, slot: 'font', caseOnly: true }
     ];
     function findItem(id) { return SHOP.frame.concat(SHOP.bg, SHOP.font, SHOP.promo, LIMITED).find((x) => x.id === id) || SHOP.frame[0]; }
     const itemSlot = (it) => it.slot || SHOP_CATS.find((c) => SHOP[c].includes(it)) || 'frame';
@@ -2509,6 +2725,7 @@
       $('mIco').textContent = icon;
       $('mTitle').textContent = title;
       $('mText').textContent = text;
+      $('mText').style.whiteSpace = '';
       const box = $('mActions');
       box.innerHTML = '';
       box.classList.toggle('stack', !!stack);
@@ -2735,6 +2952,217 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWheel(); });
 
     function renderRewards() { renderCase(); renderWheel(); }
+    // ----- Кейсы (лутбоксы) -----
+    const CASE_OPEN_MS = 1500;                 // столько длится тряска, затем показываем награду
+    const CASE_TIER_NAMES = { common: 'Обычный', rare: 'Редкий', epic: 'Эпический' };
+    const CASE_TIER_COLORS = { common: ['#c9d0e0', 'rgba(200, 210, 230, .28)'], rare: ['#a58bff', 'rgba(123, 92, 255, .35)'], epic: ['#ffc21a', 'rgba(255, 170, 40, .38)'] };
+    const SLOT_NAMES = { frame: 'Рамка', bg: 'Фон', font: 'Шрифт' };
+    let caseOpening = false;
+    let lastCaseId = null;
+
+    // Точный поиск предмета (findItem при промахе возвращает базовую рамку)
+    function itemById(id) { return SHOP.frame.concat(SHOP.bg, SHOP.font, LIMITED).find((x) => x.id === id) || null; }
+
+    // «coins:100*40, frame:f-neon» → [{ type, amount | item, w }]; нераспознанное — в bad
+    function parseRewards(str) {
+      const list = [], bad = [];
+      String(str || '').split(',').map((t) => t.trim()).filter(Boolean).forEach((tok) => {
+        const m = tok.match(/^([a-z]+)\s*:\s*([\w-]+)\s*(?:\*\s*(\d+(?:\.\d+)?))?$/i);
+        if (!m) { bad.push(tok); return; }
+        const type = m[1].toLowerCase(), val = m[2], w = m[3] != null ? Number(m[3]) : 1;
+        if (!(w > 0)) { bad.push(tok); return; }
+        if (type === 'coins') {
+          const n = Math.round(Number(val));
+          if (Number.isFinite(n) && n > 0 && n <= 1000000) list.push({ type: 'coins', amount: n, w });
+          else bad.push(tok);
+          return;
+        }
+        const it = itemById(val);
+        if (it && (type === 'item' || type === itemSlot(it))) list.push({ type: 'item', item: it, w });
+        else bad.push(tok);
+      });
+      return { list, bad };
+    }
+    const rewardLabel = (r) => r.type === 'coins' ? fmt(r.amount) + ' монет' : SLOT_NAMES[itemSlot(r.item)] + ' «' + r.item.name + '»';
+    const caseById = (id) => S.cases.find((c) => c.id === id);
+
+    function renderCases() {
+      const row = $('casesRow');
+      if (!S.cases.length) { row.innerHTML = '<div class="empty" style="padding:16px 0;width:100%">Кейсов пока нет</div>'; return; }
+      row.innerHTML = S.cases.map((c, i) =>
+        `<div class="case-card t-${c.tier}" data-case="${escapeHtml(c.id)}" data-price="${c.price}" style="animation-delay:${i * 50}ms">
+          <button class="case-info" data-info aria-label="Содержимое кейса">?</button>
+          <span class="case-tier">${CASE_TIER_NAMES[c.tier]}</span>
+          <div class="case-ico">${escapeHtml(c.icon)}</div>
+          <b class="case-name">${escapeHtml(c.name)}</b>
+          <span class="case-price">${c.price ? fmt(c.price) + '<span class="coin">S</span>' : 'Бесплатно'}</span>
+          <button class="case-open" data-open>Открыть</button>
+        </div>`).join('');
+      markCaseAfford();
+    }
+    // Подсветка «не хватает монет» без перерисовки карусели
+    function markCaseAfford() {
+      const row = $('casesRow');
+      if (row) row.querySelectorAll('.case-card').forEach((el) => el.classList.toggle('cant', S.coins < Number(el.dataset.price)));
+    }
+
+    function showCaseInfo(c) {
+      const { list } = parseRewards(c.rewards);
+      const total = list.reduce((a, r) => a + r.w, 0);
+      const lines = list.map((r) => rewardLabel(r) + ' — ' + (r.w / total * 100).toFixed(r.w / total < .1 ? 1 : 0) + '%').join('\n');
+      openModal({ icon: c.icon, title: c.name + ' · ' + fmt(c.price) + ' монет', text: lines || 'В кейсе пока нет наград', actions: [{ label: 'Понятно' }] });
+      $('mText').style.whiteSpace = 'pre-line';
+    }
+
+    function openCase(c, card) {
+      if (caseOpening || !c) return;
+      const { list } = parseRewards(c.rewards);
+      if (!list.length) { toast('⚠️', 'Кейс пуст', 'Администратор ещё не добавил награды'); return; }
+      if (S.coins < c.price) { toast('🪙', 'Не хватает монет', 'Нужно ещё ' + fmt(c.price - S.coins) + ' — открывайте достижения!'); return; }
+      caseOpening = true;
+      lastCaseId = c.id;
+      S.coins -= c.price;
+      save(true); renderCoins(true);
+      const prize = list[(() => { let r = Math.random() * list.reduce((a, x) => a + x.w, 0); for (let i = 0; i < list.length; i++) { if ((r -= list[i].w) < 0) return i; } return 0; })()];
+      if (card) { card.classList.remove('opening'); void card.offsetWidth; card.classList.add('opening'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); }
+      playSound('case_open');
+      if (navigator.vibrate) navigator.vibrate([20, 120, 20, 100, 25, 80, 30, 60, 40, 40, 60]);
+      setTimeout(() => {
+        if (card) card.classList.remove('opening');
+        caseOpening = false;
+        grantCaseReward(c, prize, list);
+      }, CASE_OPEN_MS);
+    }
+
+    function grantCaseReward(c, prize, list) {
+      const total = list.reduce((a, r) => a + r.w, 0);
+      const [col, glow] = CASE_TIER_COLORS[c.tier];
+      const sheet = $('caseModal').querySelector('.sheet');
+      sheet.style.setProperty('--cr-c', col);
+      sheet.style.setProperty('--cr-glow', glow);
+      $('crTag').textContent = CASE_TIER_NAMES[c.tier] + ' кейс · ' + c.name;
+      $('crOdds').textContent = 'Шанс выпадения: ' + (prize.w / total * 100).toFixed(prize.w / total < .1 ? 1 : 0) + '%';
+      let rare = c.tier === 'epic';
+      delete $('crAgain').dataset.equip;
+      if (prize.type === 'coins') {
+        grantCoins(prize.amount);
+        $('crPrev').innerHTML = '<div class="cr-coins">💰</div>';
+        $('crTitle').textContent = '+' + fmt(prize.amount) + ' ' + plural(prize.amount, 'монета', 'монеты', 'монет');
+        $('crText').textContent = prize.amount >= c.price ? 'Окупился! Монеты уже на счету' : 'Монеты уже зачислены на счёт';
+        rare = rare || prize.amount >= c.price * 2;
+      } else {
+        const it = prize.item, slot = itemSlot(it);
+        $('crPrev').innerHTML = slot === 'frame' ? `<div class="cr-ring ${it.cls}"><i>${escapeHtml(c.icon)}</i></div>`
+          : slot === 'bg' ? `<div class="cr-swatch ${it.cls}"></div>` : `<span class="big-num cr-font ${it.cls}">123</span>`;
+        $('crTitle').textContent = SLOT_NAMES[slot] + ' «' + it.name + '»';
+        if (S.owned.includes(it.id)) {
+          // повтор: компенсация монетами
+          const back = Math.max(50, Math.round(c.price * .3));
+          grantCoins(back);
+          $('crText').textContent = 'Уже есть в коллекции — компенсация +' + fmt(back) + ' монет';
+        } else {
+          S.owned.push(it.id);
+          save(true); renderProfile(); renderShop();
+          $('crText').textContent = (LIMITED.includes(it) ? 'Лимитированный предмет! ' : '') + 'Добавлен в коллекцию — наденьте в магазине профиля';
+          rare = true;
+          $('crAgain').dataset.equip = it.id;
+        }
+      }
+      $('crAgain').textContent = $('crAgain').dataset.equip ? 'Надеть' : 'Открыть ещё';
+      playSound('case');
+      $('caseModal').classList.add('open');
+      toast(c.icon, c.name + ': ' + $('crTitle').textContent, $('crText').textContent);
+      if (rare) confetti();
+    }
+    function closeCaseModal() { $('caseModal').classList.remove('open'); }
+
+    $('casesRow').addEventListener('click', (e) => {
+      const card = e.target.closest('.case-card');
+      if (!card) return;
+      const c = caseById(card.dataset.case);
+      if (e.target.closest('[data-info]')) { showCaseInfo(c); return; }
+      if (e.target.closest('[data-open]')) openCase(c, card);
+    });
+    $('caseModal').addEventListener('click', (e) => { if (e.target.hasAttribute('data-case-close')) closeCaseModal(); });
+    $('crAgain').addEventListener('click', () => {
+      const id = $('crAgain').dataset.equip;
+      closeCaseModal();
+      if (id) {
+        const it = itemById(id);
+        if (it && S.owned.includes(id)) { S[itemSlot(it)] = id; save(true); renderProfile(); renderShop(); toast('✨', 'Надето: ' + it.name, 'Уже применено к профилю'); }
+        return;
+      }
+      const c = caseById(lastCaseId);
+      if (c) setTimeout(() => openCase(c, $('casesRow').querySelector(`[data-case="${CSS.escape(c.id)}"]`)), 350);
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCaseModal(); });
+
+    // ----- Админка: управление кейсами -----
+    function renderCasesAdmin() {
+      $('admCasesCount').textContent = S.cases.length + ' ' + plural(S.cases.length, 'кейс', 'кейса', 'кейсов');
+      $('admCasesIds').textContent = SHOP.frame.concat(SHOP.bg, SHOP.font, LIMITED).filter((x) => x.price || LIMITED.includes(x)).map((x) => x.id).join(', ');
+      $('admCases').innerHTML = S.cases.map((c, i) =>
+        `<div class="adm-block adm-case" data-case="${escapeHtml(c.id)}">
+          <div class="adm-case-head">#${i + 1} · ${CASE_TIER_NAMES[c.tier]}<button class="chip-btn adm-danger" data-del>Удалить</button></div>
+          <div class="adm-case-row">
+            <label class="f-field"><span>Иконка</span><input type="text" class="ac-icon" maxlength="8" value="${escapeHtml(c.icon)}"></label>
+            <label class="f-field"><span>Название</span><input type="text" class="ac-name" maxlength="40" value="${escapeHtml(c.name)}"></label>
+            <label class="f-field"><span>Цена</span><input type="number" class="ac-price" inputmode="numeric" min="0" max="1000000" step="1" value="${c.price}"></label>
+          </div>
+          <label class="f-field"><span>Тип (оформление)</span><select class="ac-tier">${CASE_TIERS.map((t) => `<option value="${t}"${t === c.tier ? ' selected' : ''}>${CASE_TIER_NAMES[t]}</option>`).join('')}</select></label>
+          <label class="f-field"><span>Награды</span><textarea class="ac-rewards" rows="2" spellcheck="false" autocapitalize="off">${escapeHtml(c.rewards)}</textarea></label>
+          <button class="chip-btn" data-save>Сохранить</button>
+          <div class="adm-note"></div>
+        </div>`).join('') || '<div class="empty">Кейсов нет — добавьте первый</div>';
+    }
+    function saveCases() { save(true); renderCases(); renderCasesAdmin(); }
+
+    $('admCases').addEventListener('click', (e) => {
+      if (!isAdmin) return;
+      const box = e.target.closest('.adm-case');
+      if (!box) return;
+      const c = caseById(box.dataset.case);
+      if (!c) return;
+      const note = box.querySelector('.adm-note');
+      if (e.target.closest('[data-del]')) {
+        openModal({
+          icon: '🗑️', title: 'Удалить кейс «' + c.name + '»?', text: 'Кейс исчезнет с вкладки «Достижения». Полученные из него предметы останутся у игроков.',
+          actions: [{ label: 'Отмена', ghost: true }, { label: 'Удалить', danger: true, onClick: () => { S.cases = S.cases.filter((x) => x !== c); saveCases(); toast('🗑️', 'Кейс удалён', c.name); } }]
+        });
+        return;
+      }
+      if (!e.target.closest('[data-save]')) return;
+      const name = box.querySelector('.ac-name').value.trim();
+      const icon = box.querySelector('.ac-icon').value.trim();
+      const price = Number(box.querySelector('.ac-price').value);
+      const rewardsEl = box.querySelector('.ac-rewards');
+      const { list, bad } = parseRewards(rewardsEl.value);
+      const fail = (t) => { note.textContent = t; note.classList.add('nick-err'); };
+      box.querySelectorAll('.bad').forEach((x) => x.classList.remove('bad'));
+      if (!name) { box.querySelector('.ac-name').classList.add('bad'); return fail('Введите название'); }
+      if (!icon) { box.querySelector('.ac-icon').classList.add('bad'); return fail('Укажите иконку-эмодзи'); }
+      if (!Number.isInteger(price) || price < 0 || price > 1000000) { box.querySelector('.ac-price').classList.add('bad'); return fail('Цена — целое число от 0 до 1 000 000'); }
+      if (bad.length) { rewardsEl.classList.add('bad'); return fail('Не распознано: ' + bad.join(', ')); }
+      if (!list.length) { rewardsEl.classList.add('bad'); return fail('Добавьте хотя бы одну награду'); }
+      Object.assign(c, { name: name.slice(0, 40), icon: icon.slice(0, 8), price, tier: box.querySelector('.ac-tier').value, rewards: list.map((r) => (r.type === 'coins' ? 'coins:' + r.amount : itemSlot(r.item) + ':' + r.item.id) + (r.w !== 1 ? '*' + r.w : '')).join(', ') });
+      S.cases = normalizeCases(S.cases);
+      saveCases();
+      toast('💾', 'Кейс сохранён', c.name + ' · ' + list.length + ' ' + plural(list.length, 'награда', 'награды', 'наград'));
+    });
+    $('admCaseAdd').addEventListener('click', () => {
+      if (!isAdmin) return;
+      S.cases.push({ id: 'c-' + Date.now().toString(36), name: 'Новый кейс', icon: '🎁', price: 1000, tier: 'common', rewards: 'coins:500*60, coins:1500*30, frame:f-neon*10' });
+      saveCases();
+      const last = $('admCases').lastElementChild;
+      if (last) { last.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); last.querySelector('.ac-name').focus({ preventScroll: true }); }
+    });
+    $('admCaseReset').addEventListener('click', () => {
+      if (!isAdmin) return;
+      openModal({
+        icon: '♻️', title: 'Вернуть стандартные кейсы?', text: 'Все изменения в кейсах будут заменены набором из 10 стандартных кейсов.',
+        actions: [{ label: 'Отмена', ghost: true }, { label: 'Сбросить', danger: true, onClick: () => { S.cases = defaultCases(); saveCases(); toast('♻️', 'Кейсы сброшены', '10 стандартных кейсов'); } }]
+      });
+    });
     setInterval(renderRewards, 1000);
 
     // ================================================================
@@ -3220,6 +3648,13 @@
       boss: { dur: 1.05, notes: [
         { f: 392, t: 0, d: .14, type: 'square', vol: .22 }, { f: 523, t: .14, d: .14, type: 'square', vol: .22 }, { f: 659, t: .28, d: .14, type: 'square', vol: .22 },
         { f: 784, t: .42, d: .6, type: 'square', vol: .22 }, { f: 523, t: .42, d: .6, type: 'tri', vol: .3 }, { f: 659, t: .42, d: .6, type: 'tri', vol: .25 }
+      ] },
+      // открытие кейса: нарастающий гул и ускоряющиеся щелчки замка (≈1.5 с)
+      case_open: { dur: 1.55, notes: [
+        { f: 70, t: 0, d: 1.45, type: 'tri', slide: 1.6, vol: .45 },
+        { f: 140, t: .2, d: 1.25, slide: 1.2, vol: .16 },
+        ...[0, .26, .48, .66, .82, .95, 1.06, 1.15, 1.23, 1.3, 1.36, 1.41].map((t, i) => ({ f: 700 + i * 70, t, d: .05, type: 'square', vol: .1 })),
+        { f: 1568, t: 1.42, d: .12, type: 'tri', vol: .3 }
       ] }
     };
     const soundCache = {};
@@ -4393,7 +4828,7 @@
     function renderAll() {
       renderGreeting(); renderSettings(); renderCoins(); renderLive(); renderWeek();
       renderHistory(); renderAchievements(); renderProfile(); renderShop(); renderTracking(); updateNavDot();
-      renderCalibInfo(); renderRewards(); renderQuests(); renderWater(); renderPet(); renderBoss(); renderFood(); renderStreak(); renderFriends(); renderRating();
+      renderCalibInfo(); renderRewards(); renderCases(); renderCasesAdmin(); renderQuests(); renderWater(); renderPet(); renderBoss(); renderFood(); renderStreak(); renderFriends(); renderRating();
     }
 
     // ================================================================
