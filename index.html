@@ -3297,7 +3297,7 @@
       const pick = fillerPicker(list);
       const from = Math.max(0, roll.center - 6);
       const items = roll.items.slice(from, roll.center + 7);
-      const winIdx = 40 + Math.floor(Math.random() * 6);
+      const winIdx = 150 + Math.floor(Math.random() * 6);
       while (items.length < winIdx) items.push(pick());
       items.push(prize);
       for (let i = 0; i < ROLL_TAIL; i++) items.push(pick());
