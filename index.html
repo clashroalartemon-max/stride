@@ -15,10 +15,20 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet">
-  <!-- Leaflet: интерактивная мини-карта с GPS-маршрутом -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <!-- Шрифты не блокируют первую отрисовку: display=swap + неблокирующая загрузка CSS -->
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet"></noscript>
+  <!-- Leaflet (мини-карта) подгружается динамически — см. секцию «МИНИ-КАРТА» -->
+  <!-- Режим экономии и слабые устройства: классы на <html> ставятся до первой отрисовки -->
+  <script>
+    (function () {
+      var h = document.documentElement, n = navigator;
+      try { if (localStorage.getItem('stride.lite') === '1') h.classList.add('lite'); } catch (e) {}
+      var weak = (n.deviceMemory && n.deviceMemory <= 2) || (n.hardwareConcurrency && n.hardwareConcurrency <= 2) || (n.connection && n.connection.saveData);
+      if (weak) h.classList.add('weak');
+    })();
+  </script>
   <!-- Firebase (SDK v9, модульный): анонимный вход + Firestore для системы друзей.
        Модуль выполняется после основного скрипта, поэтому кладёт API в window.FB и сообщает событием 'fb-ready'. -->
   <script type="module">
@@ -97,7 +107,7 @@
 
     /* ===== Фон: живые неоновые пятна ===== */
     .backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
-    .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .45; animation: drift 18s ease-in-out infinite alternate; }
+    .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .45; animation: drift 18s ease-in-out infinite alternate; will-change: transform; }
     .blob.b1 { width: 360px; height: 360px; background: #3d7bff; top: -120px; left: -120px; }
     .blob.b2 { width: 300px; height: 300px; background: var(--pink); top: 35%; right: -160px; opacity: .28; animation-delay: -6s; }
     .blob.b3 { width: 320px; height: 320px; background: #2bd98a; bottom: -140px; left: 10%; opacity: .25; animation-delay: -12s; }
@@ -173,7 +183,7 @@
     .ring-wrap { position: relative; width: 250px; height: 250px; }
     .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
     .ring-bg { fill: none; stroke: rgba(255, 255, 255, .07); stroke-width: 18; }
-    .ring-fg { fill: none; stroke: url(#ringGrad); stroke-width: 18; stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease); filter: drop-shadow(0 0 10px rgba(34, 227, 255, .55)); }
+    .ring-fg { fill: none; stroke: url(#ringGrad); stroke-width: 18; stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease); filter: drop-shadow(0 0 10px rgba(34, 227, 255, .55)); will-change: stroke-dashoffset; }
     .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     .ring-center .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .14em; font-weight: 700; }
     .big-num {
@@ -251,6 +261,8 @@
     .map .leaflet-control-attribution { background: rgba(10, 10, 18, .6); color: var(--dim); font-size: 9px; border-bottom-left-radius: 8px; }
     .map .leaflet-control-attribution a { color: var(--muted); }
     .map-fallback { height: 210px; display: grid; place-items: center; padding: 0 24px 60px; text-align: center; color: var(--dim); font-size: 13px; }
+    .map-lazy { width: 100%; color: var(--muted); font-weight: 600; background: radial-gradient(circle at 50% 35%, rgba(198, 255, 61, .08), transparent 60%); }
+    .map-lazy b { display: block; font-size: 30px; margin-bottom: 6px; }
     .route-line { filter: drop-shadow(0 0 6px rgba(198, 255, 61, .7)); }
     .route-old { filter: drop-shadow(0 0 4px rgba(34, 227, 255, .5)); }
     .me-pin { background: none; border: 0; }
@@ -837,6 +849,32 @@
     @media (min-width: 420px) { .big-num { font-size: 60px; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 
+    /* ===== Слабое устройство (html.weak): без бесконечных анимаций карты ===== */
+    .weak .me-dot::after, .weak .map-pin, .weak .map-route { animation: none; }
+    .weak .me-dot::after { opacity: .35; }
+
+    /* ===== Режим экономии батареи (html.lite) ===== */
+    /* фон: вместо размытых анимированных пятен — статичные градиенты */
+    .lite .blob { display: none; }
+    .lite .backdrop {
+      background:
+        radial-gradient(circle at 0% 0%, rgba(61, 123, 255, .32), transparent 45%),
+        radial-gradient(circle at 100% 45%, rgba(255, 61, 154, .18), transparent 40%),
+        radial-gradient(circle at 25% 100%, rgba(43, 217, 138, .16), transparent 45%);
+    }
+    /* стекло без backdrop-filter (самое дорогое для GPU); плашки поверх контента — плотнее */
+    .lite .glass, .lite .coin-pill, .lite .streak-pill, .lite .map-overlay, .lite .toast, .lite .cam-x, .lite .modal .shade { backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .lite .coin-pill, .lite .streak-pill { background: rgba(22, 23, 34, .92); }
+    .lite .map-overlay { background: rgba(10, 10, 18, .88); }
+    .lite #nav { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(14, 14, 22, .96); }
+    /* без свечений и фоновых бесконечных анимаций */
+    .lite .ring-fg, .lite .route-line, .lite .route-old, .lite .map-route { filter: none; }
+    .lite .ring-wrap.live::after, .lite .streak-pill.hot, .lite .streak-pill.hot .fire, .lite .status .dot,
+    .lite .map-route, .lite .map-pin, .lite .me-dot::after, .lite .rcard.ready .dc-ico, .lite .rcard::after,
+    .lite .mini-wheel, .lite .pet-ava, .lite .q-claim, .lite .avatar::before, .lite .avatar::after,
+    .lite [class*="fr-"]::before, .lite [class*="fr-"]::after, .lite [class*="bg-"]::before, .lite [class*="bg-"]::after { animation: none !important; }
+    .lite .ring-wrap.live::after { box-shadow: 0 0 40px rgba(198, 255, 61, .18); }
+
     /* ===== Друзья: запросы, рейтинг, поиск ===== */
     .social .badge { margin-left: 6px; padding: 1px 7px; border-radius: 99px; font-size: 11px; font-weight: 800; background: var(--pink); color: #fff; vertical-align: 1px; }
     #reqCard[hidden] { display: none; }
@@ -1324,6 +1362,10 @@
           <div><b>Сбросить данные</b><small>только шаги или полный сброс</small></div>
           <button class="danger" id="resetBtn">Сброс</button>
         </div>
+        <div class="row">
+          <div><b>Режим экономии батареи</b><small>без фоновых анимаций, звуков и блокировки экрана; карта — по нажатию</small></div>
+          <button class="switch" id="liteSw" aria-label="Режим экономии батареи"></button>
+        </div>
         <button class="ver-btn" id="verBtn" hidden>Версия</button>
       </div>
     </section>
@@ -1661,6 +1703,14 @@
 
     const $ = (id) => document.getElementById(id);
     const fmt = (n) => Math.round(n).toLocaleString('ru-RU');
+    // ----- Режим экономии батареи: настройка устройства (не синхронизируется), класс html.lite ставится в <head> -----
+    const LITE_KEY = 'stride.lite';
+    let liteMode = document.documentElement.classList.contains('lite');
+    function setLiteMode(on) {
+      liteMode = !!on;
+      document.documentElement.classList.toggle('lite', liteMode);
+      try { if (liteMode) localStorage.setItem(LITE_KEY, '1'); else localStorage.removeItem(LITE_KEY); } catch (e) {}
+    }
     const plural = (n, a, b, c) => { n = Math.abs(n) % 100; const n1 = n % 10; if (n > 10 && n < 20) return c; if (n1 > 1 && n1 < 5) return b; if (n1 === 1) return a; return c; };
 
     // ================================================================
@@ -1864,8 +1914,8 @@
       // засчитываем 10 с, только если за них был хотя бы один шаг (стоя на месте минуты не идут)
       activeTimer = setInterval(() => { if (Date.now() - lastStepAt <= 10000) { today().active += 1 / 6; save(); renderLive(); } }, 10000);
 
-      // не даём экрану погаснуть — иначе датчики засыпают
-      try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+      // не даём экрану погаснуть — иначе датчики засыпают (в режиме экономии экран может гаснуть)
+      requestWakeLock();
 
       setTimeout(() => {
         if (isTracking && !S.demo && !motionSeen) setStatus('Датчик движения не отвечает. На ПК включите «Демо-режим» в профиле.', true);
@@ -1882,16 +1932,23 @@
       stopDemo();
       stopRoute();
       clearInterval(activeTimer); activeTimer = null;
-      if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+      releaseWakeLock();
       save(true);
       renderTracking();
     }
 
-    document.addEventListener('visibilitychange', async () => {
-      if (!document.hidden && isTracking && 'wakeLock' in navigator) {
-        try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
-      }
-    });
+    async function requestWakeLock() {
+      if (liteMode || !isTracking || wakeLock || !('wakeLock' in navigator)) return;
+      try {
+        const lock = await navigator.wakeLock.request('screen');
+        if (liteMode || !isTracking) { lock.release().catch(() => {}); return; }
+        wakeLock = lock;
+        lock.addEventListener('release', () => { if (wakeLock === lock) wakeLock = null; });
+      } catch (e) {}
+    }
+    function releaseWakeLock() { if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } }
+
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) requestWakeLock(); });
 
     // ================================================================
     //  ГЛАВНАЯ
@@ -1918,36 +1975,57 @@
       else setStatus(today().steps ? 'Пауза. Сегодня уже ' + fmt(today().steps) + ' ' + plural(today().steps, 'шаг', 'шага', 'шагов') : 'Нажмите «Старт» и разрешите доступ к движению');
     }
 
+    // Ссылки на узлы главной кешируются: renderLive() вызывается на каждый шаг
+    const liveEls = { ring: $('ring'), bar: $('barFill'), pct: $('pctTxt'), km: $('kmTxt'), kcal: $('kcalTxt'), min: $('minTxt') };
+    // Пишем в DOM только изменившиеся значения — лишние записи стоят перерисовки на слабых телефонах
+    function setText(el, v) { if (el.textContent !== v) el.textContent = v; }
+    function setStyle(el, prop, v) { if (el.style[prop] !== v) el.style[prop] = v; }
+
     function renderLive(bump) {
       const d = today();
       const pct = Math.min(d.steps / S.goal, 1);
-      stepsEl.textContent = fmt(d.steps);
-      if (bump) { stepsEl.classList.remove('tick'); void stepsEl.offsetWidth; stepsEl.classList.add('tick'); }
-      $('ring').style.strokeDashoffset = RING_LEN * (1 - pct);
-      $('barFill').style.width = (pct * 100) + '%';
-      $('pctTxt').textContent = Math.floor(d.steps / S.goal * 100) + '%';
-      $('kmTxt').textContent = (d.steps * STEP_LENGTH / 1000).toFixed(2);
-      $('kcalTxt').textContent = fmt(kcalFor(d.steps));
-      $('minTxt').textContent = Math.floor(d.active);
+      setText(stepsEl, fmt(d.steps));
+      if (bump && !liteMode) { stepsEl.classList.remove('tick'); void stepsEl.offsetWidth; stepsEl.classList.add('tick'); }
+      setStyle(liveEls.ring, 'strokeDashoffset', String(RING_LEN * (1 - pct)));
+      setStyle(liveEls.bar, 'width', (pct * 100) + '%');
+      setText(liveEls.pct, Math.floor(d.steps / S.goal * 100) + '%');
+      setText(liveEls.km, (d.steps * STEP_LENGTH / 1000).toFixed(2));
+      setText(liveEls.kcal, fmt(kcalFor(d.steps)));
+      setText(liveEls.min, String(Math.floor(d.active)));
       renderWorkoutLive();
       renderQuests();
       if (bump && Math.random() < .05) renderWeek(); // недорогое периодическое обновление графика
     }
 
+    // График недели: 7 столбиков создаются один раз, дальше меняются только высота, классы и подписи
+    const WEEK_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+    let weekBars = null;
     function renderWeek() {
-      const names = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
       const list = [];
       for (let i = 6; i >= 0; i--) {
         const dt = new Date(); dt.setDate(dt.getDate() - i);
         const rec = S.days[dayKey(dt)];
-        list.push({ name: names[dt.getDay()], steps: rec ? rec.steps : 0, today: i === 0 });
+        list.push({ name: WEEK_NAMES[dt.getDay()], steps: rec ? rec.steps : 0, today: i === 0 });
       }
       const max = Math.max(S.goal, ...list.map((x) => x.steps));
-      $('week').innerHTML = list.map((x) =>
-        `<div class="wday${x.today ? ' today' : ''}"><div class="wbar${x.steps ? ' on' : ''}${x.steps >= S.goal ? ' full' : ''}" style="height:${Math.max(6, x.steps / max * 92)}px" title="${fmt(x.steps)}"></div><span>${x.name}</span></div>`
-      ).join('');
+      const box = $('week');
+      if (!weekBars || box.children.length !== 7) {
+        box.innerHTML = list.map(() => '<div class="wday"><div class="wbar"></div><span></span></div>').join('');
+        weekBars = Array.from(box.children, (el) => ({ day: el, bar: el.firstChild, label: el.lastChild }));
+      }
+      list.forEach((x, i) => {
+        const w = weekBars[i];
+        const dayCls = 'wday' + (x.today ? ' today' : '');
+        const barCls = 'wbar' + (x.steps ? ' on' : '') + (x.steps >= S.goal ? ' full' : '');
+        if (w.day.className !== dayCls) w.day.className = dayCls;
+        if (w.bar.className !== barCls) w.bar.className = barCls;
+        setStyle(w.bar, 'height', Math.max(6, x.steps / max * 92) + 'px');
+        const title = fmt(x.steps);
+        if (w.bar.title !== title) w.bar.title = title;
+        setText(w.label, x.name);
+      });
       const sum = list.reduce((a, x) => a + x.steps, 0);
-      $('weekTotal').textContent = fmt(sum) + ' ' + plural(sum, 'шаг', 'шага', 'шагов');
+      setText($('weekTotal'), fmt(sum) + ' ' + plural(sum, 'шаг', 'шага', 'шагов'));
     }
 
     toggleBtn.addEventListener('click', async () => {
@@ -2070,6 +2148,9 @@
       $('wDist').textContent = dist.v; $('wDistUnit').textContent = dist.u;
       $('wSteps').textContent = fmt(w.steps);
       $('wPace').textContent = ms > 10000 ? fmt(w.steps / (ms / 60000)) : '—';
+      const pauseIco = w.pausedAt ? 'play' : 'pause';
+      if ($('wPause').dataset.ico === pauseIco) return; // иконку пересоздаём только при смене состояния
+      $('wPause').dataset.ico = pauseIco;
       $('wPause').innerHTML = w.pausedAt
         ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14z"/></svg>'
         : '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>';
@@ -2331,6 +2412,7 @@
       $('goalTxt').textContent = fmt(S.goal);
       $('demoSw').classList.toggle('on', S.demo);
       $('muteSw').classList.toggle('on', !!S.mute);
+      $('liteSw').classList.toggle('on', liteMode);
       if (document.activeElement !== $('heightInput')) $('heightInput').value = S.height || '';
       if (document.activeElement !== $('weightInput')) $('weightInput').value = S.weight || '';
       if (document.activeElement !== $('ageInput')) $('ageInput').value = S.age || '';
@@ -2364,6 +2446,18 @@
       S.mute = !S.mute;
       save(true); renderSettings();
       if (!S.mute) playSound('start');
+    });
+    $('liteSw').addEventListener('click', () => {
+      setLiteMode(!liteMode);
+      renderSettings();
+      if (liteMode) {
+        releaseWakeLock();
+        if (mapObserver) { mapObserver.disconnect(); mapObserver = null; }
+        if (!map) showMapPlaceholder();
+      }
+      else { requestWakeLock(); watchMapVisibility(); }
+      toast(liteMode ? '🔋' : '✨', liteMode ? 'Режим экономии включён' : 'Режим экономии выключен',
+        liteMode ? 'Анимации, звуки и блокировка экрана отключены' : 'Анимации и звуки снова работают');
     });
     $('recalBtn').addEventListener('click', () => {
       try { localStorage.removeItem(CALIB_KEY); } catch (e) {}
@@ -3158,7 +3252,7 @@
     }
 
     function playSound(name) {
-      if (S.mute || !SOUND_DEFS[name]) return;
+      if (S.mute || liteMode || !SOUND_DEFS[name]) return;
       try {
         if (!soundCache[name]) soundCache[name] = synthWav(SOUND_DEFS[name]);
         const a = new Audio(soundCache[name]);
@@ -3185,21 +3279,75 @@
     }
     function routeDist(pts) { let m = 0; for (let i = 1; i < pts.length; i++) m += haversine(pts[i - 1], pts[i]); return m; }
 
+    // Leaflet (~150 КБ) подгружается только при первой инициализации карты и не блокирует отрисовку
+    const LEAFLET_CSS = { href: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', integrity: 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=' };
+    const LEAFLET_JS = { src: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', integrity: 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=' };
+    let leafletPromise = null, mapLoading = false, mapObserver = null;
+
+    function loadLeaflet() {
+      if (typeof L !== 'undefined') return Promise.resolve();
+      if (leafletPromise) return leafletPromise;
+      const css = document.createElement('link');
+      css.rel = 'stylesheet'; css.href = LEAFLET_CSS.href; css.integrity = LEAFLET_CSS.integrity; css.crossOrigin = '';
+      document.head.appendChild(css);
+      leafletPromise = new Promise((resolve, reject) => {
+        const js = document.createElement('script');
+        js.src = LEAFLET_JS.src; js.integrity = LEAFLET_JS.integrity; js.crossOrigin = ''; js.async = true;
+        js.onload = resolve;
+        js.onerror = () => { leafletPromise = null; js.remove(); reject(new Error('leaflet')); };
+        document.head.appendChild(js);
+      });
+      return leafletPromise;
+    }
+
+    // Заглушка вместо карты (режим экономии): карта создаётся только по нажатию
+    function showMapPlaceholder() {
+      if (map || mapLoading) return;
+      const el = $('liveMap');
+      el.className = 'leaflet-map';
+      el.innerHTML = '<button class="map-fallback map-lazy" id="mapLazy"><span><b>🗺️</b>Нажмите, чтобы загрузить карту</span></button>';
+      $('mapLazy').addEventListener('click', () => ensureMap());
+    }
+
+    // Автоматическая инициализация — когда блок карты впервые оказывается на экране вкладки «Главная»
+    function watchMapVisibility() {
+      if (map || mapObserver) return;
+      if (liteMode) { showMapPlaceholder(); return; }
+      if (!('IntersectionObserver' in window)) { ensureMap(); return; }
+      mapObserver = new IntersectionObserver((entries) => {
+        if (!entries.some((e) => e.isIntersecting) || liteMode || currentTab !== 'home') return;
+        ensureMap();
+      }, { rootMargin: '200px 0px' });
+      mapObserver.observe($('liveMap'));
+    }
+
+    function ensureMap() {
+      if (map || mapLoading) return Promise.resolve();
+      if (mapObserver) { mapObserver.disconnect(); mapObserver = null; }
+      mapLoading = true;
+      const el = $('liveMap');
+      el.className = 'map-fallback';
+      el.textContent = 'Загружаем карту…';
+      return loadLeaflet().then(() => { mapLoading = false; el.textContent = ''; el.className = 'leaflet-map'; initMap(); })
+        .catch(() => {
+          mapLoading = false;
+          el.className = 'map-fallback';
+          el.innerHTML = '<button class="map-lazy" id="mapRetry">Карта не загрузилась — проверьте подключение к интернету.<br>Нажмите, чтобы повторить</button>';
+          $('mapRetry').addEventListener('click', () => ensureMap());
+          renderMapInfo();
+        });
+    }
+
     function initMap() {
-      if (S.curRoute) finalizeRoute(true); // трек, оборванный перезагрузкой, сохраняем
-      if (typeof L === 'undefined') {
-        const el = $('liveMap');
-        el.className = 'map-fallback';
-        el.textContent = 'Карта не загрузилась — проверьте подключение к интернету';
-        renderMapInfo();
-        return;
-      }
-      map = L.map('liveMap', { zoomControl: false, dragging: !L.Browser.mobile, scrollWheelZoom: false }).setView(MAP_DEFAULT, 12);
+      map = L.map('liveMap', { zoomControl: false, dragging: !L.Browser.mobile, scrollWheelZoom: false, fadeAnimation: !liteMode, zoomAnimation: !liteMode, markerZoomAnimation: !liteMode }).setView(MAP_DEFAULT, 12);
       L.tileLayer(MAP_TILES, { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>' }).addTo(map);
       map.attributionControl.setPosition('topright').setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
       savedLine = L.polyline([], { color: '#22e3ff', weight: 4, opacity: .7, dashArray: '6 10', lineCap: 'round', className: 'route-old' }).addTo(map);
       liveLine = L.polyline([], { color: '#c6ff3d', weight: 5, opacity: .95, lineCap: 'round', lineJoin: 'round', className: 'route-line' }).addTo(map);
       showLastRoute(true);
+      // карта появилась позже: дорисовываем текущий трек и позицию, найденные без неё
+      if (isTracking && S.curRoute) { savedLine.setLatLngs([]); liveLine.setLatLngs(S.curRoute.points); }
+      if (lastPos) placeMe(lastPos, true);
       renderMapInfo();
     }
 
@@ -3316,6 +3464,7 @@
     }
 
     $('mapTag').addEventListener('click', () => {
+      if (!map) ensureMap();
       if (lastPos && map) map.setView(lastPos, 16);
       else locateOnce();
     });
@@ -4218,7 +4367,7 @@
       if (idx >= 0) $('navPill').style.transform = 'translateX(' + (idx * 100) + '%)';
       if (name === 'ach') { renderAchievements(); S.seenAch = Object.keys(S.ach).length; save(); updateNavDot(); }
       if (name === 'profile') { renderProfile(); renderShop(); renderSettings(); renderWaterWeek(); renderFriends(); refreshRating(); }
-      if (name === 'home') { renderWeek(); renderPet(); renderQuests(); renderWater(); refreshMap(); }
+      if (name === 'home') { renderWeek(); renderPet(); renderQuests(); renderWater(); refreshMap(); watchMapVisibility(); }
       if (name === 'boss') renderBoss();
       if (name === 'food') renderFood();
       if (name === 'admin') { adminNote(''); loadAdminUsers(); }
@@ -4253,7 +4402,8 @@
     renderAll();
     try { if (localStorage.getItem(BAN_KEY)) applyBan(true); } catch (e) {}
     checkStreak();
-    initMap();
+    if (S.curRoute) finalizeRoute(true); // трек, оборванный перезагрузкой, сохраняем
+    watchMapVisibility();
     initWeather();
     locateOnce();
     if (S.activeWorkout) {
