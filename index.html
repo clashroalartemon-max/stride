@@ -26,7 +26,7 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
     import {
       getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc,
-      query, where, onSnapshot, arrayUnion, serverTimestamp
+      query, where, onSnapshot, arrayUnion, serverTimestamp, runTransaction, increment
     } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
 
     const firebaseConfig = {
@@ -45,7 +45,7 @@
     window.FB = {
       auth, db, uid: null,
       collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc,
-      query, where, onSnapshot, arrayUnion, serverTimestamp
+      query, where, onSnapshot, arrayUnion, serverTimestamp, runTransaction, increment
     };
     let announced = false;
     onAuthStateChanged(auth, (user) => {
@@ -871,6 +871,32 @@
     .fs-search .chip-btn { height: 48px; padding: 0 16px; border-radius: 14px; }
     .fs-result { margin-top: 14px; min-height: 64px; }
     .fs-result .empty { padding: 18px 0; }
+
+    /* Лимитированная рамка «Админ»: золото с вращением и пульсацией */
+    .fr-admin::before {
+      background: conic-gradient(from 0deg, #fff6c4, #ffc21a, #b07800, #ffe27a, #fff6c4, #e0a92e, #8a5a00, #ffd94a, #fff6c4);
+      animation: spin 2.4s linear infinite, adminGlow 1.6s ease-in-out infinite alternate;
+      box-shadow: 0 0 22px rgba(255, 194, 26, .7);
+    }
+    @keyframes adminGlow { to { box-shadow: 0 0 46px rgba(255, 210, 60, 1), 0 0 90px rgba(255, 170, 20, .45); } }
+
+    /* Скрытая кнопка «Версия» и админ-панель */
+    .ver-btn { align-self: center; margin-top: 10px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--dim); opacity: .7; }
+    .ver-btn[hidden] { display: none; }
+    .adm-head { display: flex; align-items: center; gap: 10px; }
+    .adm-head h2 { font-family: var(--display); font-size: 20px; font-weight: 700; }
+    .adm-head .chip-btn { margin-left: auto; }
+    .adm-list { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; }
+    .adm-list .fr-body small { display: block; }
+    .adm-form { display: flex; flex-direction: column; gap: 10px; }
+    .adm-form .f-row { grid-template-columns: 1.4fr 1fr; }
+    .adm-form .chip-btn { height: 46px; border-radius: 14px; }
+    .adm-note { font-size: 12px; color: var(--muted); margin-top: 10px; min-height: 16px; }
+    .adm-note.nick-err { color: #ff6b8e; }
+    .adm-actions { display: flex; flex-direction: column; gap: 10px; }
+    .adm-actions .chip-btn { height: 46px; border-radius: 14px; }
+    .adm-list .coin { width: 16px; height: 16px; font-size: 8px; box-shadow: none; vertical-align: -2px; }
+    .adm-gold { color: #ffd94a !important; background: rgba(255, 194, 26, .12) !important; }
   </style>
 </head>
 <body>
@@ -1160,7 +1186,7 @@
         <div class="row">
           <div><b>Никнейм</b><small id="nickInfo">уникальный — по нему вас найдут друзья</small></div>
           <div class="nick-field">
-            <input type="text" id="nickInput" maxlength="20" placeholder="ваш_ник" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="Никнейм">
+            <input type="text" id="nickInput" maxlength="20" placeholder="@nickname" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="Никнейм">
             <button class="chip-btn" id="nickSave">Сохранить</button>
           </div>
         </div>
@@ -1212,6 +1238,46 @@
           <div><b>Сбросить данные</b><small>только шаги или полный сброс</small></div>
           <button class="danger" id="resetBtn">Сброс</button>
         </div>
+        <button class="ver-btn" id="verBtn" hidden>Версия</button>
+      </div>
+    </section>
+
+    <!-- ===== АДМИН-ПАНЕЛЬ (нет в нижнем меню, открывается кнопкой «Версия») ===== -->
+    <section class="tab" id="tab-admin">
+      <div class="adm-head">
+        <h2>Админ-панель</h2>
+        <button class="chip-btn" id="admBack">← Профиль</button>
+      </div>
+
+      <div class="glass card">
+        <div class="card-title"><h2>Все пользователи</h2><button class="rk-refresh" id="admRefresh">обновить</button></div>
+        <div class="adm-list" id="admUsers"><div class="empty">Загрузка…</div></div>
+      </div>
+
+      <div class="glass card">
+        <div class="card-title"><h2>Наградить</h2><span>монеты по нику</span></div>
+        <form class="adm-form" id="admGiftForm" novalidate autocomplete="off">
+          <div class="f-row">
+            <label class="f-field"><span>Ник</span><input type="text" id="admGiftNick" maxlength="21" placeholder="@nickname" autocapitalize="off" spellcheck="false"></label>
+            <label class="f-field"><span>Монеты</span><input type="number" id="admGiftAmount" inputmode="numeric" min="1" max="1000000" step="1" placeholder="100"></label>
+          </div>
+          <button type="submit" class="chip-btn" id="admGiftBtn">Выдать</button>
+        </form>
+        <div class="adm-note" id="admGiftNote"></div>
+      </div>
+
+      <div class="glass card">
+        <div class="card-title"><h2>Режим Бога</h2><span>только на этом устройстве</span></div>
+        <div class="adm-actions">
+          <button class="chip-btn" id="admSteps">Накинуть 10 000 шагов себе</button>
+        </div>
+      </div>
+
+      <div class="glass card">
+        <div class="card-title"><h2>Лимитированные скины</h2><span>нет в магазине</span></div>
+        <div class="adm-actions">
+          <button class="chip-btn adm-gold" id="admSkin">Выдать себе Админ-скин</button>
+        </div>
       </div>
     </section>
   </main>
@@ -1256,9 +1322,9 @@
     <div class="glass sheet friend-sheet">
       <div class="m-ico" style="background:linear-gradient(135deg,#22e3ff,#6ef0a0);box-shadow:0 0 40px rgba(34,227,255,.35)">👥</div>
       <h3 id="friendModalTitle">Найти друга</h3>
-      <p>Введите никнейм друга — регистр букв не важен</p>
+      <p>Введите уникальный @ник друга — регистр букв не важен</p>
       <form class="fs-search" id="friendSearchForm" novalidate autocomplete="off">
-        <label class="f-field"><input type="text" id="friendNick" maxlength="20" placeholder="Никнейм" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Никнейм друга"></label>
+        <label class="f-field"><input type="text" id="friendNick" maxlength="20" placeholder="@nickname" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Никнейм друга"></label>
         <button type="submit" class="chip-btn" id="friendSearchBtn">Найти</button>
       </form>
       <div class="fs-result" id="friendResult"></div>
@@ -1959,7 +2025,9 @@
     const XP_PER_LEVEL = 2000;
     let shopCat = 'frame';
 
-    function findItem(id) { return SHOP.frame.concat(SHOP.bg, SHOP.font).find((x) => x.id === id) || SHOP.frame[0]; }
+    // Лимитированные предметы: не продаются в магазине, выдаются только из админ-панели
+    const LIMITED = [{ id: 'f-admin', cls: 'fr-admin', name: 'Админ', price: 0 }];
+    function findItem(id) { return SHOP.frame.concat(SHOP.bg, SHOP.font, LIMITED).find((x) => x.id === id) || SHOP.frame[0]; }
 
     function renderProfile() {
       const name = S.name.trim();
@@ -3334,7 +3402,8 @@
 
     // ================================================================
     //  ДРУЗЬЯ (Firebase: Auth + Firestore)
-    //  users/{uid}: { uid, nickname, nicknameLower, totalSteps, todaySteps, todayDate, friends: [uid] }
+    //  users/{uid}: { uid, nickname, nicknameLower, totalSteps, todaySteps, todayDate, coins, giftCoins, friends: [uid] }
+    //  nicknames/{nicknameLower}: { uid, nickname } — бронь ника; правила Firestore запрещают занять чужую (firestore.rules)
     //  friendRequests/{id}: { from, fromNick, to, status: 'pending', createdAt }
     // ================================================================
     // var, а не let: save() может вызываться до того, как выполнится этот блок
@@ -3344,8 +3413,10 @@
     var cloudTimer = null, cloudFirstPending = 0;
     const CLOUD_DELAY = 8000;     // дебаунс записи шагов в Firestore
     const CLOUD_MAX_WAIT = 60000; // при непрерывной ходьбе — не реже раза в минуту
-    const NICK_RE = /^[a-zA-Zа-яА-ЯёЁ0-9_.-]{3,20}$/;
-    const nickKey = (n) => String(n || '').trim().toLowerCase();
+    const NICK_RE = /^[a-zA-Z0-9_]{3,20}$/;  // только латиница, цифры и «_», без пробелов
+    const ADMIN_NICK = 'admin';
+    const nickKey = (n) => String(n || '').trim().replace(/^@/, '').toLowerCase();
+    const nickRef = (nick) => FB.doc(FB.db, 'nicknames', nickKey(nick));
     const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const initial = (n) => (String(n || '?').trim()[0] || '?').toUpperCase();
     const userRef = (uid) => FB.doc(FB.db, 'users', uid);
@@ -3362,7 +3433,7 @@
     function cloudSync() {
       clearTimeout(cloudTimer); cloudTimer = null; cloudFirstPending = 0;
       if (!myUid || !S.nickname) return;
-      const data = { todaySteps: today().steps, totalSteps: S.total, todayDate: dayKey() };
+      const data = { todaySteps: today().steps, totalSteps: S.total, todayDate: dayKey(), coins: S.coins };
       const sig = JSON.stringify(data);
       if (sig === lastCloud) return; // ничего не изменилось — не пишем
       lastCloud = sig;
@@ -3390,6 +3461,8 @@
         cloudMe = snap.exists() ? snap.data() : null;
         if (applyCloudMe()) save(true);
         renderFriends();
+        claimGiftCoins();
+        checkAdmin();
         if (S.friends.length !== prevFriends) refreshRating(true);
       }, (e) => { console.warn('Firestore: профиль', e); });
       // входящие запросы в друзья
@@ -3437,25 +3510,37 @@
     // ---------- Никнейм ----------
     async function saveNickname() {
       const inp = $('nickInput'), info = $('nickInfo'), btn = $('nickSave');
-      const nick = inp.value.trim();
+      const nick = inp.value.trim().replace(/^@/, '');
       const fail = (msg) => { info.textContent = msg; info.classList.add('nick-err'); inp.classList.add('bad'); };
       inp.classList.remove('bad');
       if (!myUid) { fail(fbFailed ? 'нет связи с сервером' : 'подключение… попробуйте через пару секунд'); return; }
-      if (!NICK_RE.test(nick)) { fail('3–20 символов: буквы, цифры, _ . -'); return; }
+      if (!NICK_RE.test(nick)) { fail('3–20 символов: латиница, цифры и _ без пробелов'); return; }
       if (nick === S.nickname) { renderFriends(); return; }
       btn.disabled = true; info.classList.remove('nick-err'); info.textContent = 'проверяем…';
       try {
-        const snap = await FB.getDocs(FB.query(FB.collection(FB.db, 'users'), FB.where('nicknameLower', '==', nickKey(nick))));
-        if (snap.docs.some((d) => d.id !== myUid)) { fail('ник @' + nick + ' уже занят'); return; }
+        // ники, занятые до появления брони nicknames/*, тоже считаются занятыми
+        const legacy = await FB.getDocs(FB.query(FB.collection(FB.db, 'users'), FB.where('nicknameLower', '==', nickKey(nick))));
+        if (legacy.docs.some((d) => d.id !== myUid)) { fail('Этот ник уже занят'); return; }
+        const oldNick = S.nickname;
         const t = today();
-        await FB.setDoc(userRef(myUid), {
-          uid: myUid, nickname: nick, nicknameLower: nickKey(nick),
-          totalSteps: S.total, todaySteps: t.steps, todayDate: dayKey(), friends: S.friends.slice()
-        }, { merge: true });
+        // транзакция: бронь нового ника + освобождение старого + запись профиля — атомарно
+        await FB.runTransaction(FB.db, async (tx) => {
+          const res = await tx.get(nickRef(nick));
+          if (res.exists() && res.data().uid !== myUid) throw new Error('NICK_TAKEN');
+          const oldRes = oldNick && nickKey(oldNick) !== nickKey(nick) ? await tx.get(nickRef(oldNick)) : null;
+          tx.set(nickRef(nick), { uid: myUid, nickname: nick });
+          if (oldRes && oldRes.exists() && oldRes.data().uid === myUid) tx.delete(nickRef(oldNick));
+          tx.set(userRef(myUid), {
+            uid: myUid, nickname: nick, nicknameLower: nickKey(nick),
+            totalSteps: S.total, todaySteps: t.steps, todayDate: dayKey(), coins: S.coins, friends: S.friends.slice()
+          }, { merge: true });
+        });
         S.nickname = nick; cloudMe = Object.assign({}, cloudMe, { nickname: nick });
-        lastCloud = ''; save(true); inp.blur(); renderFriends(); refreshRating(true);
+        lastCloud = ''; save(true); inp.blur(); renderFriends(); refreshRating(true); checkAdmin();
         toast('✅', 'Ник сохранён', 'Друзья найдут вас по @' + nick);
       } catch (e) {
+        // permission-denied: правила Firestore не дали перезаписать чужую бронь
+        if (e && (e.message === 'NICK_TAKEN' || e.code === 'permission-denied')) { fail('Этот ник уже занят'); return; }
         console.warn('Firestore: ник', e); fail('не удалось сохранить — проверьте интернет');
       } finally { btn.disabled = false; }
     }
@@ -3479,7 +3564,7 @@
     function showResult(html) { $('friendResult').innerHTML = html; }
     $('friendSearchForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const nick = $('friendNick').value.trim();
+      const nick = $('friendNick').value.trim().replace(/^@/, '');
       foundUser = null;
       if (!myUid) { showResult('<div class="empty">' + (fbFailed ? 'Нет связи с сервером' : 'Подключение… попробуйте ещё раз') + '</div>'); return; }
       if (!nick) { $('friendNick').classList.add('bad'); return; }
@@ -3599,6 +3684,116 @@
       $('rankCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
 
+    // ---------- Подарки от админа ----------
+    // Админ увеличивает giftCoins в документе получателя; клиент получателя забирает их в S.coins
+    let giftBusy = false;
+    async function claimGiftCoins() {
+      const g = cloudMe && Math.floor(Number(cloudMe.giftCoins) || 0);
+      if (!g || g <= 0 || giftBusy) return;
+      giftBusy = true;
+      try {
+        await FB.updateDoc(userRef(myUid), { giftCoins: FB.increment(-g) });
+        S.coins += g; lastCloud = ''; save(true); renderCoins(true); renderShop();
+        toast('🎁', 'Подарок: +' + fmt(g) + ' монет', 'Начислено администрацией');
+      } catch (e) { console.warn('Firestore: подарок', e); }
+      finally { giftBusy = false; }
+    }
+
+    // ================================================================
+    //  АДМИН-ПАНЕЛЬ
+    //  Доступ: мой ник == ADMIN_NICK и бронь nicknames/admin принадлежит моему uid
+    // ================================================================
+    let isAdmin = false, adminCheckFor = null;
+    async function checkAdmin() {
+      const nick = cloudMe && cloudMe.nickname;
+      if (!myUid || nickKey(nick) !== ADMIN_NICK) { adminCheckFor = null; setAdmin(false); return; }
+      if (adminCheckFor === myUid + ':' + nick && isAdmin) return;
+      adminCheckFor = myUid + ':' + nick;
+      try {
+        const snap = await FB.getDoc(nickRef(ADMIN_NICK));
+        setAdmin(snap.exists() && snap.data().uid === myUid);
+      } catch (e) { console.warn('Firestore: проверка админа', e); setAdmin(false); }
+    }
+    function setAdmin(v) {
+      isAdmin = !!v;
+      $('verBtn').hidden = !isAdmin;
+      if (!isAdmin && currentTab === 'admin') switchTab('profile');
+    }
+
+    function adminNote(text, err) { const n = $('admGiftNote'); n.textContent = text; n.classList.toggle('nick-err', !!err); }
+
+    async function loadAdminUsers() {
+      const box = $('admUsers');
+      box.innerHTML = '<div class="empty">Загрузка…</div>';
+      try {
+        const snap = await FB.getDocs(FB.collection(FB.db, 'users'));
+        const users = snap.docs.map((d) => Object.assign({ uid: d.id }, d.data())).filter((u) => u.nickname)
+          .sort((a, b) => (b.totalSteps || 0) - (a.totalSteps || 0));
+        box.innerHTML = users.length ? users.map((u) => `
+          <div class="fr-item${u.uid === myUid ? ' me' : ''}">
+            <div class="fr-ava"><span>${escapeHtml(initial(u.nickname))}</span></div>
+            <div class="fr-body"><b>@${escapeHtml(u.nickname)}</b><small>${fmt(u.totalSteps || 0)} ${plural(u.totalSteps || 0, 'шаг', 'шага', 'шагов')}</small></div>
+            <div class="rk-steps">${fmt(u.coins || 0)} <span class="coin">S</span></div>
+          </div>`).join('') : '<div class="empty">Пока никто не задал ник</div>';
+      } catch (e) {
+        console.warn('Firestore: список пользователей', e);
+        box.innerHTML = '<div class="empty">Не удалось загрузить — проверьте интернет и правила Firestore</div>';
+      }
+    }
+
+    $('verBtn').addEventListener('click', () => { if (isAdmin) switchTab('admin'); });
+    $('admBack').addEventListener('click', () => switchTab('profile'));
+    $('admRefresh').addEventListener('click', loadAdminUsers);
+
+    $('admGiftForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!isAdmin) return;
+      const nickInp = $('admGiftNick'), amtInp = $('admGiftAmount'), btn = $('admGiftBtn');
+      const nick = nickInp.value.trim().replace(/^@/, '');
+      const amount = Math.floor(Number(amtInp.value));
+      nickInp.classList.toggle('bad', !NICK_RE.test(nick));
+      amtInp.classList.toggle('bad', !(amount > 0 && amount <= 1000000));
+      if (!NICK_RE.test(nick) || !(amount > 0 && amount <= 1000000)) { adminNote('Укажите ник и сумму от 1 до 1 000 000', true); return; }
+      btn.disabled = true; adminNote('Ищем @' + nick + '…');
+      try {
+        const snap = await FB.getDocs(FB.query(FB.collection(FB.db, 'users'), FB.where('nicknameLower', '==', nickKey(nick))));
+        if (snap.empty) { adminNote('Пользователь @' + nick + ' не найден', true); return; }
+        const d = snap.docs[0];
+        if (d.id === myUid) {
+          // себе — сразу локально, облако обновится синхронизацией
+          S.coins += amount; save(true); renderCoins(true); renderShop();
+        } else {
+          await FB.updateDoc(userRef(d.id), { coins: FB.increment(amount), giftCoins: FB.increment(amount) });
+        }
+        adminNote('Выдано ' + fmt(amount) + ' монет пользователю @' + (d.data().nickname || nick));
+        toast('🎁', 'Награда выдана', '@' + (d.data().nickname || nick) + ' · +' + fmt(amount) + ' монет');
+        amtInp.value = '';
+        loadAdminUsers();
+      } catch (err) {
+        console.warn('Firestore: награда', err);
+        adminNote(err && err.code === 'permission-denied' ? 'Нет прав — проверьте правила Firestore' : 'Не удалось выдать — проверьте интернет', true);
+      } finally { btn.disabled = false; }
+    });
+
+    $('admSteps').addEventListener('click', () => {
+      if (!isAdmin) return;
+      today().steps += 10000;
+      S.total += 10000;
+      save(true);
+      renderLive(true); renderWeek(); renderProfile();
+      checkStreak(); checkAchievements();
+      toast('⚡', 'Режим Бога', '+10 000 шагов на сегодня');
+    });
+
+    $('admSkin').addEventListener('click', () => {
+      if (!isAdmin) return;
+      if (!S.owned.includes('f-admin')) S.owned.push('f-admin');
+      S.frame = 'f-admin';
+      save(true); renderProfile(); renderShop();
+      toast('👑', 'Админ-скин', 'Золотая рамка надета');
+      confetti();
+    });
+
     // ================================================================
     //  НАВИГАЦИЯ
     // ================================================================
@@ -3607,15 +3802,19 @@
 
     function switchTab(name) {
       if (name === currentTab) return;
+      if (name === 'admin' && !isAdmin) return;
       currentTab = name;
       document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
       document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
-      $('navPill').style.transform = 'translateX(' + (TABS.indexOf(name) * 100) + '%)';
+      const idx = TABS.indexOf(name);  // скрытые вкладки (admin) не двигают подсветку меню
+      $('navPill').style.opacity = idx < 0 ? '0' : '';
+      if (idx >= 0) $('navPill').style.transform = 'translateX(' + (idx * 100) + '%)';
       if (name === 'ach') { renderAchievements(); S.seenAch = Object.keys(S.ach).length; save(); updateNavDot(); }
       if (name === 'profile') { renderProfile(); renderShop(); renderSettings(); renderWaterWeek(); renderFriends(); refreshRating(); }
       if (name === 'home') { renderWeek(); renderPet(); renderQuests(); renderWater(); refreshMap(); }
       if (name === 'boss') renderBoss();
       if (name === 'food') renderFood();
+      if (name === 'admin') { adminNote(''); loadAdminUsers(); }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     $('nav').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) switchTab(b.dataset.tab); });
