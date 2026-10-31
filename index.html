@@ -26,7 +26,7 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
     import {
       getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc,
-      query, where, onSnapshot, arrayUnion, serverTimestamp, runTransaction, increment
+      query, where, onSnapshot, arrayUnion, arrayRemove, serverTimestamp, runTransaction, increment
     } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
 
     const firebaseConfig = {
@@ -45,7 +45,7 @@
     window.FB = {
       auth, db, uid: null,
       collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc,
-      query, where, onSnapshot, arrayUnion, serverTimestamp, runTransaction, increment
+      query, where, onSnapshot, arrayUnion, arrayRemove, serverTimestamp, runTransaction, increment
     };
     let announced = false;
     onAuthStateChanged(auth, (user) => {
@@ -897,6 +897,87 @@
     .adm-actions .chip-btn { height: 46px; border-radius: 14px; }
     .adm-list .coin { width: 16px; height: 16px; font-size: 8px; box-shadow: none; vertical-align: -2px; }
     .adm-gold { color: #ffd94a !important; background: rgba(255, 194, 26, .12) !important; }
+
+    /* Окно «Управление» пользователем */
+    .adm-list .fr-item > .chip-btn { flex-shrink: 0; font-size: 12px; padding: 6px 10px; }
+    .adm-ban-tag { color: #ff6b8e; font-weight: 800; }
+    .fr-item.adm-banned { opacity: .7; border-color: rgba(255, 61, 110, .35); }
+    .adm-sheet { max-height: calc(100dvh - 32px); overflow-y: auto; }
+    .adm-body { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+    .adm-block { padding: 12px; border-radius: 18px; background: rgba(255, 255, 255, .035); border: 1px solid var(--border); }
+    .adm-block .card-title { margin-bottom: 10px; }
+    .adm-block .card-title h2 { font-size: 14px; }
+    .adm-inline { display: flex; gap: 8px; }
+    .adm-inline .f-field { flex: 1; min-width: 0; }
+    .adm-inline .chip-btn { height: 48px; padding: 0 14px; border-radius: 14px; }
+    .adm-inline > .chip-btn:only-child, .adm-inline > .chip-btn:first-child:nth-last-child(2) { flex: 1; }
+    .adm-inline .chip-btn.no { color: var(--muted); background: var(--surface-2); }
+    .adm-danger { color: #ff6b8e !important; background: rgba(255, 61, 110, .12) !important; }
+    .f-field select {
+      height: 48px; padding: 0 12px; border-radius: 14px; font: inherit; font-weight: 700; color: var(--text);
+      background: var(--surface-2); border: 1px solid var(--border); outline: none; width: 100%; min-width: 0;
+    }
+    .f-field select:focus { border-color: var(--cyan); }
+    .f-field select option { background: #161622; color: var(--text); }
+
+    /* Заглушка бана */
+    .ban-screen { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 24px; background: var(--bg); text-align: center; }
+    .ban-screen[hidden] { display: none; }
+    .ban-screen .sheet { max-width: 420px; padding: 32px 24px; }
+    .ban-screen .m-ico { width: 72px; height: 72px; border-radius: 24px; margin: 0 auto 16px; display: grid; place-items: center; font-size: 34px; background: var(--grad-hot); box-shadow: 0 0 40px rgba(255, 61, 154, .4); }
+    .ban-screen h3 { font-family: var(--display); font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+    .ban-screen p { color: var(--muted); font-size: 15px; line-height: 1.55; }
+    body.is-banned .app, body.is-banned .nav, body.is-banned .modal, body.is-banned .cam, body.is-banned .toasts { display: none !important; }
+
+    /* Магазин: 4 вкладки (с «Промо») */
+    #seg { grid-template-columns: repeat(4, 1fr); }
+    #seg .knob { width: calc((100% - 8px) / 4); }
+    #seg button { padding: 10px 4px; font-size: 12px; }
+
+    /* Выбор питомца */
+    .item .prev.pet-prev { display: grid; place-items: center; font-size: 17px; letter-spacing: -1px; background: #12121c; white-space: nowrap; overflow: hidden; }
+
+    /* Дорогие рамки */
+    .fr-cosmic::before {
+      background: conic-gradient(from 0deg, #7b5cff, #22e3ff, #ff3d9a, #1a0b4a, #7b5cff);
+      animation: spin 5s linear infinite, cosmicGlow 2.2s ease-in-out infinite alternate;
+      box-shadow: 0 0 24px rgba(123, 92, 255, .75);
+    }
+    @keyframes cosmicGlow { to { box-shadow: 0 0 40px rgba(34, 227, 255, .9), 0 0 80px rgba(123, 92, 255, .4); } }
+    .fr-royal::before {
+      background: conic-gradient(from 0deg, #7a0f2e, #ffd94a, #fff6c4, #b0123f, #ffd94a, #7a0f2e);
+      animation: spin 6s linear infinite;
+      box-shadow: 0 0 26px rgba(255, 194, 26, .6), 0 0 0 2px rgba(255, 217, 74, .6);
+    }
+    .fr-legend::before {
+      background: conic-gradient(from 0deg, #c6ff3d, #22e3ff, #ffffff, #c6ff3d);
+      animation: spin 1.8s linear infinite, adminGlow 1.4s ease-in-out infinite alternate;
+      box-shadow: 0 0 30px rgba(198, 255, 61, .8);
+    }
+    .fr-sub::before { background: linear-gradient(135deg, #2aabee, #22e3ff 50%, #ffffff); box-shadow: 0 0 22px rgba(42, 171, 238, .75); }
+
+    /* Дорогие фоны */
+    .bg-galaxy, .bg-mountain, .bg-vip { overflow: hidden; }
+    .bg-galaxy {
+      background: radial-gradient(35% 25% at 50% 45%, rgba(255, 220, 255, .55), transparent 70%),
+        conic-gradient(from 200deg at 50% 45%, rgba(255, 61, 154, .5), rgba(123, 92, 255, .6), rgba(34, 227, 255, .45), rgba(255, 61, 154, .5)),
+        linear-gradient(180deg, #120830, #04030c);
+    }
+    .bg-galaxy::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; animation: twinkle 2.2s ease-in-out infinite alternate;
+      background-image: radial-gradient(1.4px 1.4px at 15% 25%, #fff 50%, transparent 55%), radial-gradient(1.8px 1.8px at 70% 18%, #fff 50%, transparent 55%), radial-gradient(1.2px 1.2px at 85% 65%, #e6dcff 50%, transparent 55%), radial-gradient(1.4px 1.4px at 30% 80%, #cfe9ff 50%, transparent 55%), radial-gradient(1.2px 1.2px at 55% 60%, #fff 50%, transparent 55%);
+    }
+    .bg-mountain {
+      background: linear-gradient(160deg, transparent 58%, rgba(26, 10, 40, .95) 58.5%) bottom left / 60% 55% no-repeat,
+        linear-gradient(200deg, transparent 52%, rgba(46, 16, 60, .9) 52.5%) bottom right / 70% 65% no-repeat,
+        radial-gradient(30% 22% at 50% 62%, rgba(255, 214, 120, .9), transparent 70%),
+        linear-gradient(180deg, rgba(123, 92, 255, .55), rgba(255, 61, 154, .55) 45%, rgba(255, 138, 61, .65) 70%);
+    }
+    .bg-vip { background: radial-gradient(60% 50% at 50% 0%, rgba(255, 217, 74, .55), transparent 70%), repeating-linear-gradient(45deg, rgba(255, 217, 74, .12) 0 2px, transparent 2px 12px), linear-gradient(180deg, #1c1404, #07070c); }
+    .bg-like { background: radial-gradient(40% 40% at 30% 30%, rgba(255, 61, 154, .6), transparent 70%), radial-gradient(40% 40% at 75% 70%, rgba(255, 90, 90, .5), transparent 70%), linear-gradient(180deg, rgba(123, 92, 255, .35), rgba(255, 61, 154, .3)); }
+
+    /* Лимитированный шрифт */
+    .big-num.fn-gold { background: linear-gradient(180deg, #fff6c4, #ffc21a 55%, #b07800); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 10px rgba(255, 194, 26, .5)); }
   </style>
 </head>
 <body>
@@ -1170,8 +1251,13 @@
       </div>
 
       <div class="glass card">
+        <div class="card-title"><h2>Выбор питомца</h2><span>растёт от ваших шагов</span></div>
+        <div class="shop" id="petShop"></div>
+      </div>
+
+      <div class="glass card">
         <div class="card-title"><h2>Магазин</h2><span>тратьте очки на стиль</span></div>
-        <div class="seg" id="seg"><div class="knob"></div><button class="on" data-cat="frame">Рамки аватара</button><button data-cat="bg">Фоны профиля</button><button data-cat="font">Шрифты</button></div>
+        <div class="seg" id="seg"><div class="knob"></div><button class="on" data-cat="frame">Рамки аватара</button><button data-cat="bg">Фоны профиля</button><button data-cat="font">Шрифты</button><button data-cat="promo">Промо</button></div>
         <div class="shop" id="shop"></div>
       </div>
 
@@ -1409,6 +1495,59 @@
     </div>
   </div>
 
+  <!-- ===== Управление пользователем (админ) ===== -->
+  <div class="modal" id="admUserModal" role="dialog" aria-modal="true" aria-labelledby="admUserTitle">
+    <div class="shade" data-adm-close></div>
+    <div class="glass sheet friend-sheet adm-sheet">
+      <div class="m-ico" style="background:linear-gradient(135deg,#ffc21a,#ff8a3d);box-shadow:0 0 40px rgba(255,194,26,.35)">🛠️</div>
+      <h3 id="admUserTitle">@nickname</h3>
+      <p id="admUserInfo"></p>
+      <div class="adm-body" id="admUserBody">
+        <div class="adm-block">
+          <div class="card-title"><h2>Монеты</h2></div>
+          <div class="adm-inline">
+            <label class="f-field"><input type="number" id="admCoinAmt" inputmode="numeric" min="1" max="1000000" step="1" placeholder="Сумма" aria-label="Монеты"></label>
+            <button type="button" class="chip-btn" data-adm="coins+">Выдать</button>
+            <button type="button" class="chip-btn no" data-adm="coins-">Забрать</button>
+          </div>
+        </div>
+        <div class="adm-block">
+          <div class="card-title"><h2>Шаги</h2></div>
+          <div class="adm-inline">
+            <label class="f-field"><input type="number" id="admStepAmt" inputmode="numeric" min="1" max="1000000" step="1" placeholder="Сумма" aria-label="Шаги"></label>
+            <button type="button" class="chip-btn" data-adm="steps+">Выдать</button>
+            <button type="button" class="chip-btn no" data-adm="steps-">Забрать</button>
+          </div>
+        </div>
+        <div class="adm-block">
+          <div class="card-title"><h2>Лимитированные скины</h2></div>
+          <div class="adm-inline">
+            <label class="f-field"><select id="admItemSel" aria-label="Лимитированный предмет"></select></label>
+            <button type="button" class="chip-btn adm-gold" data-adm="item">Выдать</button>
+          </div>
+        </div>
+        <div class="adm-block">
+          <div class="card-title"><h2>Бан</h2><span id="admBanState">активен</span></div>
+          <div class="adm-inline">
+            <button type="button" class="chip-btn adm-danger" id="admBanBtn" data-adm="ban">Забанить</button>
+            <button type="button" class="chip-btn" id="admUnbanBtn" data-adm="unban">Разбанить</button>
+          </div>
+        </div>
+      </div>
+      <div class="adm-note" id="admUserNote"></div>
+      <div class="m-actions"><button type="button" class="btn-ghost" data-adm-close>Закрыть</button></div>
+    </div>
+  </div>
+
+  <!-- ===== Заглушка бана: скрывает всё приложение ===== -->
+  <div class="ban-screen" id="banScreen" hidden role="alert">
+    <div class="glass sheet">
+      <div class="m-ico">🚫</div>
+      <h3>Вы забанены</h3>
+      <p>Доступ к приложению заблокирован администрацией. Если вы считаете, что это ошибка, свяжитесь с поддержкой.</p>
+    </div>
+  </div>
+
   <div class="toasts" id="toasts"></div>
 
   <script>
@@ -1437,7 +1576,13 @@
         weight: null,                // вес, кг (null — не указан)
         daily: null,                 // квесты и вода на сегодня: { day, workouts, claimed, water, waterBonus }
         font: 'n-none',              // шрифт цифры шагов
-        pet: { energy: 100, day: null }, // энергия питомца, день последнего списания
+        pet: { energy: 100, day: null }, // энергия текущего питомца, день последнего списания
+        petType: 'chicken',          // выбранный питомец: 'chicken' | 'dragon' | 'cat'
+        pets: ['chicken'],           // купленные питомцы
+        petStates: {},               // { petType: { energy, day } } — энергия питомцев, которые сейчас не выбраны
+        promoOpened: {},             // { itemId: timestamp } — промо-ссылка открыта, ждём «Я подписался»
+        workoutsDone: 0,             // всего завершённых тренировок (история хранит только последние 30)
+        foodAdded: 0,                // всего блюд, добавленных в дневник
         boss: { level: 1, hp: 10000, kills: 0 },
         mute: false,                 // звуки выключены
         waterHist: {},               // { 'YYYY-MM-DD': стаканов } — последние 7 дней
@@ -1459,14 +1604,17 @@
       const s = Object.assign(defaults(), saved && typeof saved === 'object' ? saved : {});
       // повреждённые/устаревшие вложенные поля заменяем значениями по умолчанию
       const d = defaults();
-      ['days', 'ach', 'waterHist', 'foodDays'].forEach((k) => { if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = d[k]; });
-      ['owned', 'workouts', 'routes', 'friends', 'friendRequests'].forEach((k) => { if (!Array.isArray(s[k])) s[k] = d[k]; });
+      ['days', 'ach', 'waterHist', 'foodDays', 'petStates', 'promoOpened'].forEach((k) => { if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = d[k]; });
+      ['owned', 'workouts', 'routes', 'friends', 'friendRequests', 'pets'].forEach((k) => { if (!Array.isArray(s[k])) s[k] = d[k]; });
       s.pet = Object.assign(d.pet, s.pet);
       s.boss = Object.assign(d.boss, s.boss);
       s.streak = Object.assign(d.streak, s.streak && typeof s.streak === 'object' ? s.streak : {});
       if (!Number.isFinite(s.streak.count) || s.streak.count < 0) s.streak.count = 0;
       if (typeof s.streak.lastDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s.streak.lastDate)) { s.streak.lastDate = null; s.streak.count = 0; }
       if (!Number.isFinite(s.goal) || s.goal < 1000) s.goal = d.goal;
+      if (!s.pets.includes('chicken')) s.pets.unshift('chicken');
+      if (!s.pets.includes(s.petType)) s.petType = 'chicken';
+      ['workoutsDone', 'foodAdded'].forEach((k) => { if (!Number.isFinite(s[k]) || s[k] < 0) s[k] = 0; });
       return s;
     }
     function load() {
@@ -1648,6 +1796,7 @@
     }
 
     function addStep() {
+      if (isBanned) return;
       const d = today();
       d.steps++;
       S.total++;
@@ -1871,6 +2020,7 @@
       const w = S.activeWorkout;
       if (!w) return;
       const duration = workoutElapsed(w);
+      S.workoutsDone = Math.max(S.workoutsDone || 0, S.workouts.length) + 1;
       S.workouts.unshift({ mode: w.mode, date: w.start, duration, steps: w.steps, dist: w.steps * STEP_LENGTH });
       S.workouts = S.workouts.slice(0, 30);
       S.activeWorkout = null;
@@ -1949,8 +2099,26 @@
       { id: 'k1', icon: '🚀', title: '1 000 шагов', desc: 'Пройдите 1 000 шагов всего', coins: 50, prog: () => [S.total, 1000] },
       { id: 'k5', icon: '⚡', title: '5 000 шагов', desc: 'Пройдите 5 000 шагов всего', coins: 150, prog: () => [S.total, 5000] },
       { id: 'k10', icon: '👑', title: '10 000 шагов', desc: 'Пройдите 10 000 шагов за один день', coins: 300, prog: () => [Math.max(0, ...Object.values(S.days).map((d) => d.steps)), 10000] },
-      { id: 'work', icon: '🔥', title: 'Атлет', desc: 'Завершите первую тренировку', coins: 100, prog: () => [S.workouts.length, 1] }
+      { id: 'work', icon: '🔥', title: 'Атлет', desc: 'Завершите первую тренировку', coins: 100, prog: () => [S.workouts.length, 1] },
+      { id: 'marathon', icon: '🏃', title: 'Марафонец', desc: 'Пройдите 50 000 шагов за всё время', coins: 500, prog: () => [S.total, 50000] },
+      { id: 'sport', icon: '🏋️', title: 'Спортсмен', desc: 'Завершите 10 тренировок', coins: 300, prog: () => [Math.max(S.workoutsDone || 0, S.workouts.length), 10] },
+      { id: 'water7', icon: '💧', title: 'Водохлеб', desc: 'Выпивайте 8 стаканов воды 7 дней подряд', coins: 200, prog: () => [waterStreak(), 7] },
+      { id: 'gourmet', icon: '🍽️', title: 'Гурман', desc: 'Добавьте 20 блюд в дневник питания', coins: 300, prog: () => [Math.max(S.foodAdded || 0, foodEntryCount()), 20] },
+      { id: 'social', icon: '🤝', title: 'Социальный', desc: 'Добавьте 3 друзей', coins: 200, prog: () => [S.friends.length, 3] }
     ];
+
+    // Дней подряд с полной нормой воды; сегодняшний незавершённый день серию не обрывает
+    function waterStreak() {
+      const hist = Object.assign({}, S.waterHist, { [dayKey()]: waterCount(daily().water) });
+      let n = 0;
+      for (let i = 0; i < 7; i++) {
+        const dt = new Date(); dt.setDate(dt.getDate() - i);
+        if ((hist[dayKey(dt)] || 0) >= WATER_GOAL) n++;
+        else if (i > 0) break;
+      }
+      return n;
+    }
+    function foodEntryCount() { return Object.values(S.foodDays).reduce((a, list) => a + (Array.isArray(list) ? list.length : 0), 0); }
 
     function checkAchievements() {
       let changed = false;
@@ -1993,6 +2161,11 @@
     // ================================================================
     //  ПРОФИЛЬ И МАГАЗИН
     // ================================================================
+    // Ссылки для промо-предметов — замените на свой Telegram-канал и пост
+    const PROMO_SUB_URL = 'https://t.me/stride_app';
+    const PROMO_LIKE_URL = 'https://t.me/stride_app/1';
+    const PROMO_MIN_WAIT = 5000; // «Я подписался» засчитывается не раньше чем через 5 с после перехода
+    const SHOP_CATS = ['frame', 'bg', 'font', 'promo'];
     const SHOP = {
       frame: [
         { id: 'f-none', cls: 'fr-none', name: 'Базовая', price: 0 },
@@ -2001,7 +2174,9 @@
         { id: 'f-rainbow', cls: 'fr-rainbow', name: 'Радуга', price: 250 },
         { id: 'f-fire', cls: 'fr-fire', name: 'Пламя', price: 400 },
         { id: 'f-pixel', cls: 'fr-pixel', name: 'Пиксель', price: 200 },
-        { id: 'f-crystal', cls: 'fr-crystal', name: 'Кристалл', price: 450 }
+        { id: 'f-crystal', cls: 'fr-crystal', name: 'Кристалл', price: 450 },
+        { id: 'f-cosmic', cls: 'fr-cosmic', name: 'Космическая', price: 1500 },
+        { id: 'f-royal', cls: 'fr-royal', name: 'Королевская', price: 2000 }
       ],
       bg: [
         { id: 'b-none', cls: 'bg-none', name: 'Ночь', price: 0 },
@@ -2011,7 +2186,9 @@
         { id: 'b-cyber', cls: 'bg-cyber', name: 'Кибер', price: 300 },
         { id: 'b-retro', cls: 'bg-retro', name: 'Ретро', price: 180 },
         { id: 'b-matrix', cls: 'bg-matrix', name: 'Матрица', price: 350 },
-        { id: 'b-space', cls: 'bg-space', name: 'Космос', price: 500 }
+        { id: 'b-space', cls: 'bg-space', name: 'Космос', price: 500 },
+        { id: 'b-galaxy', cls: 'bg-galaxy', name: 'Галактика', price: 1200 },
+        { id: 'b-mountain', cls: 'bg-mountain', name: 'Закат в горах', price: 1800 }
       ],
       font: [
         { id: 'n-none', cls: 'fn-none', name: 'Базовый', price: 0 },
@@ -2019,6 +2196,11 @@
         { id: 'n-pixel', cls: 'fn-pixel', name: 'Пиксельный', price: 150 },
         { id: 'n-serif', cls: 'fn-serif', name: 'Каллиграфия', price: 200 },
         { id: 'n-sunset', cls: 'fn-sunset', name: 'Закат', price: 300 }
+      ],
+      // Промо: не покупаются, а выдаются за действие по ссылке; slot — куда надевается предмет
+      promo: [
+        { id: 'f-sub', cls: 'fr-sub', name: 'Рамка Подписчика', price: 0, slot: 'frame', url: PROMO_SUB_URL, action: 'подписку на канал', confirm: 'Я подписался' },
+        { id: 'b-like', cls: 'bg-like', name: 'Фон Лайкера', price: 0, slot: 'bg', url: PROMO_LIKE_URL, action: 'лайк поста', confirm: 'Я лайкнул' }
       ]
     };
     const RANKS = ['Новичок', 'Пешеход', 'Путник', 'Ходок', 'Марафонец', 'Скороход', 'Легенда'];
@@ -2026,8 +2208,20 @@
     let shopCat = 'frame';
 
     // Лимитированные предметы: не продаются в магазине, выдаются только из админ-панели
-    const LIMITED = [{ id: 'f-admin', cls: 'fr-admin', name: 'Админ', price: 0 }];
-    function findItem(id) { return SHOP.frame.concat(SHOP.bg, SHOP.font, LIMITED).find((x) => x.id === id) || SHOP.frame[0]; }
+    const LIMITED = [
+      { id: 'f-admin', cls: 'fr-admin', name: 'Админ', price: 0, slot: 'frame' },
+      { id: 'f-legend', cls: 'fr-legend', name: 'Легенда', price: 0, slot: 'frame' },
+      { id: 'b-vip', cls: 'bg-vip', name: 'VIP', price: 0, slot: 'bg' },
+      { id: 'n-gold', cls: 'fn-gold', name: 'Золотой', price: 0, slot: 'font' }
+    ];
+    function findItem(id) { return SHOP.frame.concat(SHOP.bg, SHOP.font, SHOP.promo, LIMITED).find((x) => x.id === id) || SHOP.frame[0]; }
+    const itemSlot = (it) => it.slot || SHOP_CATS.find((c) => SHOP[c].includes(it)) || 'frame';
+    // Выдать предмет (лимитированный или промо) и сразу надеть
+    function grantItem(it) {
+      if (!S.owned.includes(it.id)) S.owned.push(it.id);
+      S[itemSlot(it)] = it.id;
+      save(true); renderProfile(); renderShop();
+    }
 
     function renderProfile() {
       const name = S.name.trim();
@@ -2054,21 +2248,48 @@
     }
 
     function renderShop() {
-      const cur = S[shopCat];
-      $('shop').innerHTML = SHOP[shopCat].map((it, i) => {
+      // полученные лимитированные предметы показываем в своей категории, чтобы их можно было снова надеть
+      const list = SHOP[shopCat].concat(LIMITED.filter((l) => l.slot === shopCat && S.owned.includes(l.id)));
+      $('shop').innerHTML = list.map((it, i) => {
+        const slot = itemSlot(it);
         const owned = S.owned.includes(it.id);
-        const eq = cur === it.id;
-        const prev = shopCat === 'font' ? `<div class="prev fontprev"><span class="big-num ${it.cls}" style="font-size:24px">123</span></div>` : shopCat === 'frame' ? `<div class="prev ring ${it.cls}"><i></i></div>` : `<div class="prev swatch ${it.cls}" style="background-color:#12121c"></div>`;
-        const price = eq ? 'Надето' : owned ? 'Выбрать' : `${it.price}<span class="coin">S</span>`;
-        return `<button class="item${owned ? ' owned' : ''}${eq ? ' equipped' : ''}${!owned && S.coins < it.price ? ' cant' : ''}" data-id="${it.id}" style="animation-delay:${i * 40}ms">${prev}<b>${it.name}</b><span class="price">${price}</span></button>`;
+        const eq = S[slot] === it.id;
+        const promo = shopCat === 'promo';
+        const prev = slot === 'font' ? `<div class="prev fontprev"><span class="big-num ${it.cls}" style="font-size:24px">123</span></div>` : slot === 'frame' ? `<div class="prev ring ${it.cls}"><i></i></div>` : `<div class="prev swatch ${it.cls}" style="background-color:#12121c"></div>`;
+        const price = eq ? 'Надето' : owned ? 'Выбрать' : promo ? (S.promoOpened[it.id] ? it.confirm : 'Получить') : LIMITED.includes(it) ? 'Лимит' : `${fmt(it.price)}<span class="coin">S</span>`;
+        return `<button class="item${owned ? ' owned' : ''}${eq ? ' equipped' : ''}${!owned && !promo && S.coins < it.price ? ' cant' : ''}" data-id="${it.id}" style="animation-delay:${i * 40}ms">${prev}<b>${it.name}</b><span class="price">${price}</span></button>`;
       }).join('');
+      renderPetShop();
+    }
+
+    // Промо: «Получить» открывает ссылку, после возврата «Я подписался» выдаёт предмет
+    function promoClick(it) {
+      const opened = S.promoOpened[it.id];
+      if (!opened) {
+        S.promoOpened[it.id] = Date.now(); save(true); renderShop();
+        window.open(it.url, '_blank', 'noopener');
+        toast('🔗', 'Сделайте ' + it.action, 'Затем вернитесь и нажмите «' + it.confirm + '»');
+        return;
+      }
+      if (Date.now() - opened < PROMO_MIN_WAIT) {
+        openModal({
+          icon: '⏳', title: 'Ещё не готово', text: 'Похоже, вы не успели сделать ' + it.action + '. Перейдите по ссылке ещё раз.',
+          actions: [{ label: 'Отмена', ghost: true }, { label: 'Открыть ссылку', onClick: () => { S.promoOpened[it.id] = Date.now(); save(true); window.open(it.url, '_blank', 'noopener'); } }]
+        });
+        return;
+      }
+      delete S.promoOpened[it.id];
+      grantItem(it);
+      toast('🎉', 'Получено: ' + it.name, 'Спасибо за поддержку! Уже применено к профилю');
+      confetti();
     }
 
     $('shop').addEventListener('click', (e) => {
       const b = e.target.closest('.item');
       if (!b) return;
       const it = findItem(b.dataset.id);
-      const slot = shopCat;
+      const slot = itemSlot(it);
+      if (!S.owned.includes(it.id) && shopCat === 'promo') { promoClick(it); return; }
       if (S.owned.includes(it.id)) {
         S[slot] = it.id;
       } else if (S.coins >= it.price) {
@@ -2080,6 +2301,7 @@
               S.coins -= it.price; S.owned.push(it.id); S[slot] = it.id;
               save(true); renderCoins(true); renderShop(); renderProfile();
               toast('✨', 'Покупка: ' + it.name, 'Уже применено к профилю');
+              if (it.price >= 1000) confetti();
             } }
           ]
         });
@@ -2095,7 +2317,7 @@
       const b = e.target.closest('button');
       if (!b) return;
       shopCat = b.dataset.cat;
-      $('seg').querySelector('.knob').style.transform = 'translateX(' + (['frame', 'bg', 'font'].indexOf(shopCat) * 100) + '%)';
+      $('seg').querySelector('.knob').style.transform = 'translateX(' + (SHOP_CATS.indexOf(shopCat) * 100) + '%)';
       $('seg').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
       renderShop();
     });
@@ -2153,7 +2375,7 @@
     // Сброс только шагов: имя, скины, босс, питомец, вода, маршруты и настройки остаются
     function resetSteps() {
       if (isTracking) stopTracking();
-      const keep = ['name', 'owned', 'frame', 'bg', 'font', 'boss', 'pet', 'goal', 'demo', 'height', 'weight', 'mute', 'waterHist', 'routes', 'sex', 'age', 'foodGoal', 'foodDays'];
+      const keep = ['name', 'owned', 'frame', 'bg', 'font', 'boss', 'pet', 'goal', 'demo', 'height', 'weight', 'mute', 'waterHist', 'routes', 'sex', 'age', 'foodGoal', 'foodDays', 'petType', 'pets', 'petStates', 'promoOpened', 'foodAdded'];
       const fresh = defaults();
       keep.forEach((k) => { fresh[k] = S[k]; });
       if (S.daily && S.daily.day === dayKey()) {
@@ -2559,7 +2781,7 @@
         confetti();
       }
       syncWaterHist(); save(true);
-      renderWater(); renderQuests();
+      renderWater(); renderQuests(); checkAchievements();
       if (navigator.vibrate) navigator.vibrate(15);
     });
 
@@ -2753,8 +2975,14 @@
     // ================================================================
     //  ПИТОМЕЦ
     // ================================================================
-    const PET_STAGES = [[0, '🥚', 'Яйцо'], [1000, '🐣', 'Цыплёнок'], [5000, '🐥', 'Птенец'], [15000, '🐔', 'Курочка']];
+    // Стадии роста: [шагов всего, эмодзи, название]
+    const PETS = {
+      chicken: { name: 'Курочка', icon: '🐔', price: 0, stages: [[0, '🥚', 'Яйцо'], [1000, '🐣', 'Цыплёнок'], [5000, '🐥', 'Птенец'], [15000, '🐔', 'Курочка']] },
+      dragon: { name: 'Дракончик', icon: '🐉', price: 1000, stages: [[0, '🥚', 'Яйцо дракона'], [3000, '🦎', 'Ящерка'], [15000, '🐉', 'Дракон']] },
+      cat: { name: 'Котик', icon: '🐈', price: 1500, stages: [[0, '🥚', 'Загадочное яйцо'], [3000, '🐱', 'Котёнок'], [15000, '🐈', 'Кот']] }
+    };
     const PET_DECAY = 10, PET_FEED_COST = 10, PET_FEED = 20;
+    const curPet = () => PETS[S.petType] || PETS.chicken;
 
     function petTick() {
       const k = dayKey();
@@ -2766,8 +2994,9 @@
     function renderPet() {
       petTick();
       let lvl = 0;
-      PET_STAGES.forEach((st, i) => { if (S.total >= st[0]) lvl = i; });
-      const st = PET_STAGES[lvl], next = PET_STAGES[lvl + 1];
+      const stages = curPet().stages;
+      stages.forEach((st, i) => { if (S.total >= st[0]) lvl = i; });
+      const st = stages[lvl], next = stages[lvl + 1];
       const e = S.pet.energy, sad = e <= 0;
       $('petAva').textContent = sad ? '😢' : st[1];
       $('petName').textContent = st[2] + ' · ур. ' + lvl;
@@ -2778,6 +3007,50 @@
       $('petCard').classList.toggle('low', e <= 30);
       $('petFeed').disabled = e >= 100 && daily().fed; // сытого питомца можно покормить раз в день (квест)
     }
+
+    // ----- Выбор питомца (профиль) -----
+    function renderPetShop() {
+      $('petShop').innerHTML = Object.keys(PETS).map((id, i) => {
+        const p = PETS[id], owned = S.pets.includes(id), eq = S.petType === id;
+        const stages = p.stages.map((x) => x[1]).join('→');
+        const price = eq ? 'Выбран' : owned ? 'Выбрать' : `${fmt(p.price)}<span class="coin">S</span>`;
+        return `<button class="item${owned ? ' owned' : ''}${eq ? ' equipped' : ''}${!owned && S.coins < p.price ? ' cant' : ''}" data-pet="${id}" style="animation-delay:${i * 40}ms">
+          <div class="prev swatch pet-prev">${stages}</div><b>${p.name}</b><span class="price">${price}</span></button>`;
+      }).join('');
+    }
+    // Энергия у каждого питомца своя; невыбранные питомцы не голодают
+    function selectPet(id) {
+      if (id === S.petType) return;
+      S.petStates[S.petType] = { energy: S.pet.energy, day: S.pet.day };
+      const st = S.petStates[id] || { energy: 100 };
+      S.pet = { energy: st.energy, day: dayKey() };
+      delete S.petStates[id];
+      S.petType = id;
+      save(true); renderPet(); renderPetShop();
+    }
+    $('petShop').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-pet]');
+      if (!b) return;
+      const id = b.dataset.pet, p = PETS[id];
+      if (S.pets.includes(id)) {
+        if (id !== S.petType) { selectPet(id); toast(p.icon, 'Питомец: ' + p.name, 'Энергия и кормление — для него'); }
+        return;
+      }
+      if (S.coins < p.price) { toast('🪙', 'Не хватает монет', 'Нужно ещё ' + fmt(p.price - S.coins)); return; }
+      openModal({
+        icon: p.icon, title: 'Купить «' + p.name + '»?', text: 'Стоимость: ' + fmt(p.price) + ' монет. На счету: ' + fmt(S.coins) + '. Питомец растёт вместе с вашими шагами.',
+        actions: [
+          { label: 'Отмена', ghost: true },
+          { label: 'Купить', onClick: () => {
+            if (S.coins < p.price || S.pets.includes(id)) return;
+            S.coins -= p.price; S.pets.push(id);
+            selectPet(id); renderCoins(true); renderShop();
+            toast(p.icon, 'Новый питомец: ' + p.name, 'Он уже на главной');
+            confetti();
+          } }
+        ]
+      });
+    });
 
     $('petFeed').addEventListener('click', () => {
       if (S.pet.energy >= 100 && daily().fed) { toast('😋', 'Питомец сыт', 'Энергия уже 100%'); return; }
@@ -3395,7 +3668,8 @@
       const list = S.foodDays[key] || (S.foodDays[key] = []);
       list.push({ time, name, kcal: Math.round(kcal), protein, fat, carbs });
       list.sort((a, b) => a.time.localeCompare(b.time));
-      save(true); closeFoodModal(); renderFood();
+      S.foodAdded = Math.max(S.foodAdded || 0, foodEntryCount() - 1) + 1;
+      save(true); closeFoodModal(); renderFood(); checkAchievements();
       toast('🍎', 'Добавлено в дневник', name + ' · ' + fmt(kcal) + ' ккал');
       if (navigator.vibrate) navigator.vibrate(15);
     });
@@ -3411,6 +3685,7 @@
     var fbFailed = false;
     var cloudMe;                  // undefined — ещё не загружен, null — документа нет, объект — мой профиль
     var cloudTimer = null, cloudFirstPending = 0;
+    var isBanned = false;         // users/{uid}.banned === true — приложение заблокировано
     const CLOUD_DELAY = 8000;     // дебаунс записи шагов в Firestore
     const CLOUD_MAX_WAIT = 60000; // при непрерывной ходьбе — не реже раза в минуту
     const NICK_RE = /^[a-zA-Z0-9_]{3,20}$/;  // только латиница, цифры и «_», без пробелов
@@ -3432,7 +3707,7 @@
     let lastCloud = '';
     function cloudSync() {
       clearTimeout(cloudTimer); cloudTimer = null; cloudFirstPending = 0;
-      if (!myUid || !S.nickname) return;
+      if (!myUid || !S.nickname || isBanned) return;
       const data = { todaySteps: today().steps, totalSteps: S.total, todayDate: dayKey(), coins: S.coins };
       const sig = JSON.stringify(data);
       if (sig === lastCloud) return; // ничего не изменилось — не пишем
@@ -3459,11 +3734,12 @@
       FB.onSnapshot(userRef(myUid), (snap) => {
         const prevFriends = S.friends.length;
         cloudMe = snap.exists() ? snap.data() : null;
+        applyBan(cloudMe && cloudMe.banned === true);
         if (applyCloudMe()) save(true);
         renderFriends();
-        claimGiftCoins();
+        claimAdminGifts();
         checkAdmin();
-        if (S.friends.length !== prevFriends) refreshRating(true);
+        if (S.friends.length !== prevFriends) { refreshRating(true); checkAchievements(); }
       }, (e) => { console.warn('Firestore: профиль', e); });
       // входящие запросы в друзья
       const q = FB.query(FB.collection(FB.db, 'friendRequests'), FB.where('to', '==', myUid), FB.where('status', '==', 'pending'));
@@ -3587,24 +3863,27 @@
       } catch (err) {
         console.warn('Firestore: поиск', err); showResult('<div class="empty">Не удалось выполнить поиск — проверьте интернет</div>');
       }
-        $('friendResult').addEventListener('click', async (e) => {
+    });
+    $('friendResult').addEventListener('click', async (e) => {
       const btn = e.target.closest('#friendAddBtn');
       if (!btn || !foundUser) return;
       const target = foundUser;
       btn.disabled = true; btn.textContent = '…';
       try {
+        // встречный запрос от этого человека уже есть — просто принимаем его
         const incoming = S.friendRequests.find((r) => r.from === target.uid);
         if (incoming) { await acceptRequest(incoming); btn.textContent = 'Друзья ✓'; return; }
-        
         const reqs = FB.collection(FB.db, 'friendRequests');
-        await FB.addDoc(reqs, { from: myUid, fromNick: S.nickname, to: target.uid, status: 'pending', createdAt: FB.serverTimestamp() });
-        
+        const dup = await FB.getDocs(FB.query(reqs, FB.where('from', '==', myUid), FB.where('to', '==', target.uid)));
+        if (!dup.docs.some((d) => d.data().status === 'pending')) {
+          await FB.addDoc(reqs, { from: myUid, fromNick: S.nickname, to: target.uid, status: 'pending', createdAt: FB.serverTimestamp() });
+        }
         btn.textContent = 'Отправлено ✓';
         toast('📨', 'Запрос отправлен', '@' + target.nickname + ' увидит его в профиле');
       } catch (err) {
-        console.error('ОШИБКА ДРУЗЕЙ:', err);
+        console.warn('Firestore: запрос в друзья', err);
         btn.disabled = false; btn.textContent = 'Добавить';
-        toast('⚠️', 'Ошибка', err.message || 'Проверьте интернет');
+        toast('⚠️', 'Не удалось отправить', 'Проверьте интернет и попробуйте ещё раз');
       }
     });
 
@@ -3619,7 +3898,7 @@
       ]);
       await FB.deleteDoc(FB.doc(FB.db, 'friendRequests', r.id));
       toast('🤝', 'Новый друг', '@' + (r.fromNick || 'друг') + ' теперь в вашем рейтинге');
-      refreshRating(true);
+      refreshRating(true); checkAchievements();
     }
     $('reqList').addEventListener('click', async (e) => {
       const acc = e.target.closest('[data-req-accept]'), dec = e.target.closest('[data-req-decline]');
@@ -3681,26 +3960,75 @@
       $('rankCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
 
-    // ---------- Подарки от админа ----------
-    // Админ увеличивает giftCoins в документе получателя; клиент получателя забирает их в S.coins
+    // ---------- Подарки и списания от админа ----------
+    // Админ меняет giftCoins / giftSteps (может быть отрицательным — «Забрать») и дописывает id в giftItems;
+    // клиент получателя применяет их к S и обнуляет поля в своём документе
     let giftBusy = false;
-    async function claimGiftCoins() {
-      const g = cloudMe && Math.floor(Number(cloudMe.giftCoins) || 0);
-      if (!g || g <= 0 || giftBusy) return;
+    async function claimAdminGifts() {
+      if (!cloudMe || giftBusy || isBanned) return;
+      const coins = Math.trunc(Number(cloudMe.giftCoins) || 0);
+      const steps = Math.trunc(Number(cloudMe.giftSteps) || 0);
+      const items = (Array.isArray(cloudMe.giftItems) ? cloudMe.giftItems : []).filter((id) => LIMITED.some((l) => l.id === id));
+      if (!coins && !steps && !items.length) return;
       giftBusy = true;
       try {
-        await FB.updateDoc(userRef(myUid), { giftCoins: FB.increment(-g) });
-        S.coins += g; lastCloud = ''; save(true); renderCoins(true); renderShop();
-        toast('🎁', 'Подарок: +' + fmt(g) + ' монет', 'Начислено администрацией');
+        const upd = {};
+        if (coins) upd.giftCoins = FB.increment(-coins);
+        if (steps) upd.giftSteps = FB.increment(-steps);
+        if (items.length) upd.giftItems = FB.arrayRemove(...items);
+        await FB.updateDoc(userRef(myUid), upd);
+        if (coins) {
+          S.coins = Math.max(0, S.coins + coins);
+          toast(coins > 0 ? '🎁' : '🪙', coins > 0 ? 'Подарок: +' + fmt(coins) + ' монет' : 'Списано ' + fmt(-coins) + ' монет', 'Решение администрации');
+        }
+        if (steps) {
+          const d = today();
+          d.steps = Math.max(0, d.steps + steps);
+          S.total = Math.max(0, S.total + steps);
+          toast(steps > 0 ? '⚡' : '👟', steps > 0 ? 'Подарок: +' + fmt(steps) + ' шагов' : 'Списано ' + fmt(-steps) + ' шагов', 'Решение администрации');
+        }
+        items.forEach((id) => {
+          const it = findItem(id);
+          grantItem(it);
+          toast('👑', 'Лимитированный скин: ' + it.name, 'Выдан администрацией и уже надет');
+        });
+        if (items.length) confetti();
+        lastCloud = ''; save(true);
+        renderCoins(true); renderShop(); renderLive(true); renderWeek(); renderProfile();
+        checkStreak(); checkAchievements();
       } catch (e) { console.warn('Firestore: подарок', e); }
       finally { giftBusy = false; }
     }
+
+    // ---------- Бан ----------
+    // banned: true в users/{uid} — полноэкранная заглушка; флаг кешируется, чтобы бан работал и офлайн
+    const BAN_KEY = 'stride.banned';
+    function applyBan(v) {
+      v = !!v;
+      try { v ? localStorage.setItem(BAN_KEY, '1') : localStorage.removeItem(BAN_KEY); } catch (e) {}
+      if (v === isBanned) return;
+      isBanned = v;
+      document.body.classList.toggle('is-banned', v);
+      $('banScreen').hidden = !v;
+      if (v) {
+        if (isTracking) stopTracking();
+        stopDemo();
+        ['modal', 'friendModal', 'wheelModal', 'foodModal', 'admUserModal'].forEach((id) => $(id).classList.remove('open'));
+        document.activeElement && document.activeElement.blur();
+      }
+    }
+    // пока бан активен, любые клики, ввод и отправка форм вне заглушки блокируются
+    ['click', 'submit', 'input', 'keydown', 'change'].forEach((type) => document.addEventListener(type, (e) => {
+      if (isBanned && !(e.target.closest && e.target.closest('#banScreen'))) { e.preventDefault(); e.stopImmediatePropagation(); }
+    }, true));
 
     // ================================================================
     //  АДМИН-ПАНЕЛЬ
     //  Доступ: мой ник == ADMIN_NICK и бронь nicknames/admin принадлежит моему uid
     // ================================================================
     let isAdmin = false, adminCheckFor = null;
+    let adminUsers = [];          // последний загруженный список пользователей
+    let managed = null;           // пользователь, открытый в окне «Управление»
     async function checkAdmin() {
       const nick = cloudMe && cloudMe.nickname;
       if (!myUid || nickKey(nick) !== ADMIN_NICK) { adminCheckFor = null; setAdmin(false); return; }
@@ -3726,11 +4054,13 @@
         const snap = await FB.getDocs(FB.collection(FB.db, 'users'));
         const users = snap.docs.map((d) => Object.assign({ uid: d.id }, d.data())).filter((u) => u.nickname)
           .sort((a, b) => (b.totalSteps || 0) - (a.totalSteps || 0));
+        adminUsers = users;
         box.innerHTML = users.length ? users.map((u) => `
-          <div class="fr-item${u.uid === myUid ? ' me' : ''}">
+          <div class="fr-item${u.uid === myUid ? ' me' : ''}${u.banned ? ' adm-banned' : ''}">
             <div class="fr-ava"><span>${escapeHtml(initial(u.nickname))}</span></div>
-            <div class="fr-body"><b>@${escapeHtml(u.nickname)}</b><small>${fmt(u.totalSteps || 0)} ${plural(u.totalSteps || 0, 'шаг', 'шага', 'шагов')}</small></div>
+            <div class="fr-body"><b>@${escapeHtml(u.nickname)}</b><small>${u.banned ? '<span class="adm-ban-tag">забанен</span> · ' : ''}${fmt(u.totalSteps || 0)} ${plural(u.totalSteps || 0, 'шаг', 'шага', 'шагов')}</small></div>
             <div class="rk-steps">${fmt(u.coins || 0)} <span class="coin">S</span></div>
+            <button class="chip-btn" data-manage="${escapeHtml(u.uid)}">Управление</button>
           </div>`).join('') : '<div class="empty">Пока никто не задал ник</div>';
       } catch (e) {
         console.warn('Firestore: список пользователей', e);
@@ -3770,6 +4100,86 @@
         console.warn('Firestore: награда', err);
         adminNote(err && err.code === 'permission-denied' ? 'Нет прав — проверьте правила Firestore' : 'Не удалось выдать — проверьте интернет', true);
       } finally { btn.disabled = false; }
+    });
+
+    // ---------- Окно «Управление» пользователем ----------
+    function admUserNote(text, err) { const n = $('admUserNote'); n.textContent = text; n.classList.toggle('nick-err', !!err); }
+    function renderManaged() {
+      const u = managed;
+      $('admUserTitle').textContent = '@' + u.nickname + (u.uid === myUid ? ' (вы)' : '');
+      $('admUserInfo').textContent = fmt(u.coins || 0) + ' монет · ' + fmt(u.totalSteps || 0) + ' шагов всего';
+      $('admBanState').textContent = u.banned ? 'сейчас забанен' : 'активен';
+      $('admBanState').classList.toggle('nick-err', !!u.banned);
+      $('admBanBtn').disabled = !!u.banned || u.uid === myUid;
+      $('admUnbanBtn').disabled = !u.banned;
+    }
+    function openManage(uid) {
+      const u = adminUsers.find((x) => x.uid === uid);
+      if (!u || !isAdmin) return;
+      managed = Object.assign({}, u);
+      ['admCoinAmt', 'admStepAmt'].forEach((id) => { $(id).value = ''; $(id).classList.remove('bad'); });
+      $('admItemSel').innerHTML = LIMITED.map((l) => `<option value="${l.id}">${escapeHtml(l.name)} · ${{ frame: 'рамка', bg: 'фон', font: 'шрифт' }[l.slot]}</option>`).join('');
+      admUserNote('');
+      renderManaged();
+      $('admUserModal').classList.add('open');
+    }
+    function closeManage() { $('admUserModal').classList.remove('open'); managed = null; document.activeElement && document.activeElement.blur(); }
+    $('admUsers').addEventListener('click', (e) => { const b = e.target.closest('[data-manage]'); if (b) openManage(b.dataset.manage); });
+    $('admUserModal').addEventListener('click', (e) => { if (e.target.closest('[data-adm-close]')) closeManage(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('admUserModal').classList.contains('open')) closeManage(); });
+
+    const ADM_LIMIT = 1000000;
+    $('admUserBody').addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-adm]');
+      if (!b || !managed || !isAdmin) return;
+      const act = b.dataset.adm, u = managed, self = u.uid === myUid;
+      let upd = null, apply = null, done = '';
+      if (act === 'coins+' || act === 'coins-' || act === 'steps+' || act === 'steps-') {
+        const isCoins = act.startsWith('coins'), inp = $(isCoins ? 'admCoinAmt' : 'admStepAmt');
+        const n = Math.floor(Number(inp.value));
+        const ok = n > 0 && n <= ADM_LIMIT;
+        inp.classList.toggle('bad', !ok);
+        if (!ok) { admUserNote('Сумма от 1 до 1 000 000', true); return; }
+        const delta = act.endsWith('+') ? n : -n;
+        if (isCoins) {
+          upd = { coins: FB.increment(delta), giftCoins: FB.increment(delta) };
+          apply = () => { S.coins = Math.max(0, S.coins + delta); renderCoins(true); renderShop(); };
+          u.coins = Math.max(0, (u.coins || 0) + delta);
+          done = (delta > 0 ? 'Выдано ' : 'Забрано ') + fmt(n) + ' монет';
+        } else {
+          upd = { totalSteps: FB.increment(delta), giftSteps: FB.increment(delta) };
+          apply = () => { const d = today(); d.steps = Math.max(0, d.steps + delta); S.total = Math.max(0, S.total + delta); renderLive(true); renderWeek(); renderProfile(); checkStreak(); checkAchievements(); };
+          u.totalSteps = Math.max(0, (u.totalSteps || 0) + delta);
+          done = (delta > 0 ? 'Выдано ' : 'Забрано ') + fmt(n) + ' шагов';
+        }
+        inp.value = '';
+      } else if (act === 'item') {
+        const it = LIMITED.find((l) => l.id === $('admItemSel').value);
+        if (!it) return;
+        upd = { giftItems: FB.arrayUnion(it.id) };
+        apply = () => grantItem(it);
+        done = 'Выдан скин «' + it.name + '»';
+      } else if (act === 'ban' || act === 'unban') {
+        if (self) { admUserNote('Нельзя забанить самого себя', true); return; }
+        const v = act === 'ban';
+        upd = { banned: v };
+        u.banned = v;
+        done = v ? 'Пользователь забанен' : 'Пользователь разбанен';
+      } else return;
+
+      b.disabled = true; admUserNote('Сохраняем…');
+      try {
+        // себе — сразу локально (облако догонит синхронизацией), другим — через документ в Firestore
+        if (self && apply) { apply(); lastCloud = ''; save(true); }
+        else await FB.updateDoc(userRef(u.uid), upd);
+        admUserNote(done + ' · @' + u.nickname);
+        toast(act === 'ban' ? '🚫' : act === 'unban' ? '✅' : '🛠️', done, '@' + u.nickname);
+        if (managed === u) renderManaged();
+        loadAdminUsers();
+      } catch (err) {
+        console.warn('Firestore: управление пользователем', err);
+        admUserNote(err && err.code === 'permission-denied' ? 'Нет прав — проверьте правила Firestore' : 'Не удалось сохранить — проверьте интернет', true);
+      } finally { b.disabled = false; if (managed === u) renderManaged(); }
     });
 
     $('admSteps').addEventListener('click', () => {
@@ -3841,6 +4251,7 @@
     //  СТАРТ
     // ================================================================
     renderAll();
+    try { if (localStorage.getItem(BAN_KEY)) applyBan(true); } catch (e) {}
     checkStreak();
     initMap();
     initWeather();
