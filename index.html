@@ -19,6 +19,47 @@
   <!-- Leaflet: интерактивная мини-карта с GPS-маршрутом -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Firebase (SDK v9, модульный): анонимный вход + Firestore для системы друзей.
+       Модуль выполняется после основного скрипта, поэтому кладёт API в window.FB и сообщает событием 'fb-ready'. -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+    import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+    import {
+      getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc,
+      query, where, onSnapshot, arrayUnion, serverTimestamp
+    } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCYHXHd8UFHcEm6TT17NYzZr0FnJfbRF7c",
+      authDomain: "stride-5394d.firebaseapp.com",
+      projectId: "stride-5394d",
+      storageBucket: "stride-5394d.firebasestorage.app",
+      messagingSenderId: "1076482506561",
+      appId: "1:1076482506561:web:1e4cf82caf0d1c65a92bc0",
+      measurementId: "G-LB2XM0Y7SE"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    window.FB = {
+      auth, db, uid: null,
+      collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc,
+      query, where, onSnapshot, arrayUnion, serverTimestamp
+    };
+    let announced = false;
+    onAuthStateChanged(auth, (user) => {
+      if (!user || announced) return;
+      announced = true;
+      window.FB.uid = user.uid;
+      window.dispatchEvent(new CustomEvent('fb-ready', { detail: user.uid }));
+    });
+    signInAnonymously(auth).catch((e) => {
+      console.warn('Firebase: анонимный вход не удался', e);
+      window.FB.error = e;
+      window.dispatchEvent(new CustomEvent('fb-error', { detail: e }));
+    });
+  </script>
   <style>
     :root {
       --bg: #07070c;
@@ -82,6 +123,26 @@
       transition: transform .3s var(--ease);
     }
     .coin-pill.bump { transform: scale(1.12); }
+    .top-pills { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .streak-pill {
+      display: flex; align-items: center; gap: 6px; height: 40px;
+      padding: 0 14px 0 10px; border-radius: 99px;
+      background: var(--surface); border: 1px solid var(--border);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      font-weight: 800; font-variant-numeric: tabular-nums; color: var(--muted);
+      transition: transform .3s var(--ease), color .3s, border-color .3s, background .3s;
+    }
+    .streak-pill .fire { font-size: 18px; line-height: 1; filter: grayscale(1) opacity(.55); transition: filter .3s; }
+    .streak-pill.on { color: #ffd27a; border-color: rgba(255, 140, 40, .45); background: linear-gradient(135deg, rgba(255, 140, 40, .2), rgba(255, 61, 154, .14)); }
+    .streak-pill.on .fire { filter: drop-shadow(0 0 6px rgba(255, 140, 40, .8)); }
+    .streak-pill.wait { color: #ffd27a; }
+    .streak-pill.wait .fire { filter: grayscale(.4) opacity(.8); }
+    .streak-pill.hot { animation: streakPulse 1.6s ease-in-out infinite; }
+    .streak-pill.hot .fire { animation: streakFlame 1.6s ease-in-out infinite; }
+    .streak-pill.bump { transform: scale(1.15); }
+    .streak-pill:active { transform: scale(.94); }
+    @keyframes streakPulse { 50% { box-shadow: 0 0 22px rgba(255, 140, 40, .55); border-color: rgba(255, 170, 60, .8); } }
+    @keyframes streakFlame { 50% { transform: scale(1.18) rotate(-6deg); } }
     .coin {
       width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
       background: radial-gradient(circle at 30% 30%, #fff6b0, #ffc21a 55%, #d18400);
@@ -385,24 +446,24 @@
       position: fixed; z-index: 20; left: 50%; transform: translateX(-50%);
       bottom: calc(env(safe-area-inset-bottom) + 12px);
       width: calc(100% - 24px); max-width: 456px; height: var(--nav-h);
-      display: grid; grid-template-columns: repeat(5, 1fr);
+      display: grid; grid-template-columns: repeat(6, 1fr);
       padding: 8px; border-radius: 26px;
       background: rgba(16, 16, 26, .72); border: 1px solid var(--border);
       backdrop-filter: blur(26px) saturate(160%); -webkit-backdrop-filter: blur(26px) saturate(160%);
       box-shadow: 0 16px 50px rgba(0, 0, 0, .55);
     }
     .nav .pill {
-      position: absolute; top: 8px; bottom: 8px; left: 8px; width: calc((100% - 16px) / 5);
+      position: absolute; top: 8px; bottom: 8px; left: 8px; width: calc((100% - 16px) / 6);
       border-radius: 19px; background: linear-gradient(135deg, rgba(198, 255, 61, .16), rgba(34, 227, 255, .12));
       border: 1px solid rgba(198, 255, 61, .25);
       transition: transform .5s var(--ease);
     }
     .nav button { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--dim); transition: color .3s; }
     .nav button svg { width: 23px; height: 23px; transition: transform .4s var(--ease); }
-    .nav button span { font-size: 10px; font-weight: 700; letter-spacing: .02em; }
+    .nav button span { font-size: 9.5px; font-weight: 700; letter-spacing: 0; white-space: nowrap; }
     .nav button.on { color: var(--text); }
     .nav button.on svg { transform: translateY(-1px) scale(1.08); color: var(--lime); }
-    .nav .ndot { position: absolute; top: 9px; right: calc(50% - 16px); width: 8px; height: 8px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 8px var(--pink); }
+    .nav .ndot { position: absolute; top: 8px; right: calc(50% - 15px); width: 8px; height: 8px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 8px var(--pink); }
 
     /* ===== Модальное окно и тосты ===== */
     .modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; padding: 16px; padding-bottom: calc(env(safe-area-inset-bottom) + 16px); visibility: hidden; }
@@ -542,6 +603,7 @@
     .rcard.ready .mini-wheel { animation-duration: 2.4s; }
 
     .chip-btn { color: var(--cyan); font-weight: 700; font-size: 14px; padding: 6px 12px; border-radius: 12px; background: rgba(34, 227, 255, .1); white-space: nowrap; }
+    .backup-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
     .wheel-stage { position: relative; width: 260px; height: 260px; margin: 22px auto 8px; }
     .wheel {
@@ -665,9 +727,150 @@
     .boss .bar-fill.hp { background: linear-gradient(90deg, #ff3d6e, var(--orange)); box-shadow: 0 0 16px rgba(255, 61, 110, .55); transition: width .3s var(--ease); }
     .boss .b-note { font-size: 13px; color: var(--muted); margin-top: 14px; font-weight: 600; }
 
-    @media (max-width: 360px) { .nav button span { font-size: 9px; letter-spacing: 0; } .nav button svg { width: 21px; height: 21px; } }
+    /* ===== Еда: кольцо калорий, ИМТ, дневник ===== */
+    .food-ring .ring-fg { stroke: url(#foodGrad); filter: drop-shadow(0 0 10px rgba(255, 194, 26, .45)); transition: stroke-dashoffset 1s var(--ease), stroke .4s; }
+    .food-ring.over .ring-fg { stroke: #ff3d6e; filter: drop-shadow(0 0 12px rgba(255, 61, 110, .7)); }
+    .food-num { font-family: var(--display); font-size: 46px; font-weight: 800; line-height: 1.05; letter-spacing: -.03em; font-variant-numeric: tabular-nums; margin: 4px 0 2px; background: linear-gradient(135deg, var(--lime), #ffc21a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .food-ring.over .food-num { background: none; color: #ff4d6d; text-shadow: 0 0 18px rgba(255, 61, 110, .55); }
+    .food-ring.over .lbl { color: #ff86a0; }
+    .macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; margin-top: 20px; }
+    .macro { padding: 12px; border-radius: 16px; background: rgba(255, 255, 255, .035); text-align: left; }
+    .macro small { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    .macro b { display: block; font-family: var(--display); font-size: 16px; font-weight: 700; margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
+    .macro b span { font-family: var(--body); font-size: 11px; color: var(--muted); font-weight: 600; }
+    .macro .q-track { margin-top: 0; }
+    .macro.p .q-track i { background: linear-gradient(90deg, var(--cyan), #3d7bff); }
+    .macro.f .q-track i { background: linear-gradient(90deg, #ffc21a, var(--orange)); }
+    .macro.c .q-track i { background: linear-gradient(90deg, var(--lime), #2bd98a); }
+    .macro.over .q-track i { background: #ff3d6e; }
+    .seg.goal-seg { margin: 0; }
+    .tdee { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 14px; }
+    .tdee b { font-family: var(--display); font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .tdee b span { font-family: var(--body); font-size: 13px; color: var(--muted); font-weight: 700; }
+    .tdee small, .food-hint { font-size: 12px; color: var(--muted); font-weight: 600; line-height: 1.5; }
+    .tdee small { text-align: right; }
+    .food-hint { margin-top: 10px; }
+    .food-hint .chip-btn { margin-top: 10px; display: inline-block; }
+    .bmi-head { display: flex; align-items: center; gap: 14px; }
+    .bmi-val { font-family: var(--display); font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+    .bmi-cat { font-size: 13px; font-weight: 800; padding: 6px 10px; border-radius: 99px; background: rgba(198, 255, 61, .14); color: var(--lime); }
+    .bmi-cat.warn { background: rgba(255, 194, 26, .14); color: #ffc21a; }
+    .bmi-cat.bad { background: rgba(255, 61, 110, .14); color: #ff6b8b; }
+    .bmi-scale { position: relative; height: 10px; border-radius: 99px; margin: 18px 0 8px; background: linear-gradient(90deg, #22e3ff 0 14%, #c6ff3d 14% 40%, #ffc21a 40% 60%, #ff3d6e 60% 100%); opacity: .85; }
+    .bmi-scale i { position: absolute; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #fff; border: 3px solid var(--bg); box-shadow: 0 0 12px rgba(255, 255, 255, .6); transition: left .8s var(--ease); }
+    .bmi-legend { display: flex; justify-content: space-between; font-size: 10px; color: var(--dim); font-weight: 700; }
+    .day-switch { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+    .day-switch button { width: 38px; height: 38px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); font-size: 18px; font-weight: 800; flex-shrink: 0; transition: opacity .3s; }
+    .day-switch button:disabled { opacity: .3; cursor: default; }
+    .day-switch div { text-align: center; }
+    .day-switch b { font-family: var(--display); font-size: 15px; font-weight: 700; display: block; }
+    .day-switch small { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .meal .em { background: rgba(255, 194, 26, .12); font-family: var(--display); font-size: 12px; font-weight: 700; color: #ffc21a; }
+    .meal .info b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .meal .del { width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center; font-size: 15px; color: #ff6b8b; background: rgba(255, 61, 110, .1); transition: transform .2s var(--ease); }
+    .meal .del:active { transform: scale(.88); }
+    .food-add { margin-top: 14px; }
+    .food-add svg { width: 20px; height: 20px; }
+    .food-manual { width: 100%; margin-top: 10px; height: 54px; }
+    .food-photo { display: none; width: 100%; height: 150px; object-fit: cover; border-radius: 18px; margin-top: 16px; border: 1px solid var(--border); }
+    .food-photo.show { display: block; }
+
+    /* ===== Камера: распознавание еды ===== */
+    .cam { position: fixed; inset: 0; z-index: 55; background: #05060a; display: flex; flex-direction: column; visibility: hidden; opacity: 0; transition: opacity .3s, visibility 0s .3s; }
+    .cam.open { visibility: visible; opacity: 1; transition: opacity .3s; }
+    .cam video, .cam .cam-shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .cam .cam-shot { display: none; filter: blur(14px) brightness(.45); transform: scale(1.08); }
+    .cam.busy .cam-shot { display: block; }
+    .cam.busy video, .cam.err video { visibility: hidden; }
+    .cam-top { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14px) 16px 14px; background: linear-gradient(rgba(0, 0, 0, .6), transparent); }
+    .cam-top b { font-family: var(--display); font-size: 15px; font-weight: 700; }
+    .cam-x { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 18px; background: rgba(255, 255, 255, .12); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    .cam-x:active { transform: scale(.92); }
+    .cam-frame { position: relative; z-index: 1; flex: 1; margin: 8% 10%; border-radius: 28px; pointer-events: none;
+      background:
+        linear-gradient(var(--lime), var(--lime)) top left / 34px 3px, linear-gradient(var(--lime), var(--lime)) top left / 3px 34px,
+        linear-gradient(var(--lime), var(--lime)) top right / 34px 3px, linear-gradient(var(--lime), var(--lime)) top right / 3px 34px,
+        linear-gradient(var(--cyan), var(--cyan)) bottom left / 34px 3px, linear-gradient(var(--cyan), var(--cyan)) bottom left / 3px 34px,
+        linear-gradient(var(--cyan), var(--cyan)) bottom right / 34px 3px, linear-gradient(var(--cyan), var(--cyan)) bottom right / 3px 34px;
+      background-repeat: no-repeat; opacity: .9; }
+    .cam.busy .cam-frame, .cam.err .cam-frame { visibility: hidden; }
+    .cam-bottom { position: relative; z-index: 2; padding: 18px 20px calc(env(safe-area-inset-bottom) + 22px); background: linear-gradient(transparent, rgba(0, 0, 0, .7)); text-align: center; }
+    .cam-bottom small { display: block; color: rgba(255, 255, 255, .75); font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+    .cam-bottom .btn-main { margin-top: 0; max-width: 440px; margin-inline: auto; }
+    .cam-bottom .btn-main:disabled { opacity: .5; }
+    .cam.busy .cam-bottom, .cam.err .cam-bottom { visibility: hidden; }
+    .cam-state { position: absolute; inset: 0; z-index: 3; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; text-align: center; }
+    .cam.busy .cam-load, .cam.err .cam-err { display: flex; }
+    .cam-state h3 { font-family: var(--display); font-size: 18px; font-weight: 700; }
+    .cam-state p { color: var(--muted); font-size: 14px; line-height: 1.55; max-width: 320px; }
+    .cam-err .m-ico { width: 72px; height: 72px; border-radius: 24px; display: grid; place-items: center; font-size: 34px; background: var(--grad-hot); box-shadow: 0 0 40px rgba(255, 61, 154, .4); }
+    .cam-err .m-actions { display: flex; gap: 10px; width: 100%; max-width: 360px; margin-top: 8px; }
+    .cam-err .m-actions button { flex: 1; height: 54px; margin: 0; }
+    .ai-spin { position: relative; width: 96px; height: 96px; }
+    .ai-spin::before, .ai-spin::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 4px solid transparent; }
+    .ai-spin::before { border-top-color: var(--lime); border-right-color: var(--cyan); animation: spin 1s linear infinite; filter: drop-shadow(0 0 10px rgba(34, 227, 255, .6)); }
+    .ai-spin::after { inset: 14px; border-bottom-color: var(--pink); border-left-color: #ffc21a; animation: spin 1.4s linear infinite reverse; }
+    .ai-spin span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 28px; animation: breathe 1.6s ease-in-out infinite; }
+    .ai-dots::after { content: ''; animation: aiDots 1.2s steps(4) infinite; }
+    @keyframes aiDots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+    .food-sheet { max-height: calc(100dvh - 32px); overflow-y: auto; text-align: left !important; }
+    .food-sheet h3 { text-align: center; }
+    .food-sheet > p { text-align: center; }
+    .f-form { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+    .f-field { display: flex; flex-direction: column; gap: 6px; }
+    .f-field span { font-size: 12px; color: var(--muted); font-weight: 700; }
+    .f-field input {
+      height: 48px; padding: 0 14px; border-radius: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
+      background: var(--surface-2); border: 1px solid var(--border); outline: none; transition: border-color .3s; -moz-appearance: textfield; width: 100%; min-width: 0;
+    }
+    .f-field input::-webkit-outer-spin-button, .f-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .f-field input:focus { border-color: var(--cyan); }
+    .f-field input.bad { border-color: #ff3d6e; }
+    .f-field input::placeholder { color: var(--dim); font-weight: 600; }
+    .f-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .f-row.two { grid-template-columns: 1.4fr 1fr; }
+    .sex-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; border-radius: 12px; background: rgba(0, 0, 0, .3); }
+    .sex-seg button { min-width: 42px; height: 30px; border-radius: 9px; font-weight: 800; font-size: 13px; color: var(--muted); transition: background .3s, color .3s; }
+    .sex-seg button.on { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+
+    @media (max-width: 360px) { .nav button span { font-size: 8px; } .nav button svg { width: 20px; height: 20px; } }
     @media (min-width: 420px) { .big-num { font-size: 60px; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+    /* ===== Друзья: запросы, рейтинг, поиск ===== */
+    .social .badge { margin-left: 6px; padding: 1px 7px; border-radius: 99px; font-size: 11px; font-weight: 800; background: var(--pink); color: #fff; vertical-align: 1px; }
+    #reqCard[hidden] { display: none; }
+    .fr-list { display: flex; flex-direction: column; gap: 8px; }
+    .fr-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 18px; background: rgba(255, 255, 255, .035); border: 1px solid transparent; }
+    .fr-ava { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 16px; background: linear-gradient(145deg, #1c1d2b, #0d0d16); border: 1px solid var(--border); }
+    .fr-ava span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .fr-body { flex: 1; min-width: 0; text-align: left; }
+    .fr-body b { font-size: 14px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fr-body small { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .fr-btns { display: flex; gap: 6px; flex-shrink: 0; }
+    .fr-btns .chip-btn.no { color: var(--muted); background: var(--surface-2); }
+    .chip-btn:disabled { opacity: .5; cursor: default; }
+    .rk-place { width: 30px; flex-shrink: 0; text-align: center; font-family: var(--display); font-weight: 800; font-size: 15px; color: var(--muted); }
+    .rk-steps { font-weight: 800; font-variant-numeric: tabular-nums; font-size: 15px; flex-shrink: 0; }
+    .fr-item.me { border-color: rgba(198, 255, 61, .45); background: rgba(198, 255, 61, .07); }
+    .fr-item.me .rk-steps { color: var(--lime); }
+    .fr-item.top1 .rk-place { color: #ffc21a; }
+    .rk-refresh { font-size: 12px; color: var(--cyan); font-weight: 700; }
+    .nick-field { display: flex; align-items: center; gap: 6px; }
+    .nick-field input {
+      width: 130px; height: 34px; padding: 0 10px; border-radius: 10px; font-weight: 700;
+      background: var(--surface-2); border: 1px solid var(--border); outline: none; transition: border-color .3s; min-width: 0;
+    }
+    .nick-field input:focus { border-color: var(--cyan); }
+    .nick-field input.bad, .f-field input.bad { border-color: #ff3d6e; }
+    .nick-err { color: #ff6b8e !important; }
+    .friend-sheet { text-align: left !important; }
+    .friend-sheet h3, .friend-sheet > p { text-align: center; }
+    .fs-search { display: flex; gap: 8px; margin-top: 18px; }
+    .fs-search .f-field { flex: 1; }
+    .fs-search .chip-btn { height: 48px; padding: 0 16px; border-radius: 14px; }
+    .fs-result { margin-top: 14px; min-height: 64px; }
+    .fs-result .empty { padding: 18px 0; }
   </style>
 </head>
 <body>
@@ -677,6 +880,7 @@
   <svg width="0" height="0" style="position:absolute">
     <defs>
       <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c6ff3d"/><stop offset="1" stop-color="#22e3ff"/></linearGradient>
+      <linearGradient id="foodGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c6ff3d"/><stop offset="1" stop-color="#ffc21a"/></linearGradient>
       <linearGradient id="routeGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#22e3ff"/><stop offset="1" stop-color="#c6ff3d"/></linearGradient>
     </defs>
   </svg>
@@ -684,7 +888,10 @@
   <main class="app">
     <header class="topbar">
       <div class="hello"><small id="greet">Привет</small><h1 id="helloName">Атлет</h1></div>
-      <div class="coin-pill" id="coinPill"><div class="coin">S</div><span id="coinTop">0</span></div>
+      <div class="top-pills">
+        <button class="streak-pill" id="streakPill" aria-label="Стрик: дней подряд с выполненной целью"><span class="fire">🔥</span><span id="streakNum">0</span></button>
+        <div class="coin-pill" id="coinPill"><div class="coin">S</div><span id="coinTop">0</span></div>
+      </div>
     </header>
 
     <!-- ===== ГЛАВНАЯ ===== -->
@@ -810,6 +1017,57 @@
       </div>
     </section>
 
+    <!-- ===== ЕДА ===== -->
+    <section class="tab" id="tab-food">
+      <div class="glass hero">
+        <div class="ring-wrap food-ring" id="foodRingWrap">
+          <svg viewBox="0 0 250 250">
+            <circle class="ring-bg" cx="125" cy="125" r="108"/>
+            <circle class="ring-fg" id="foodRing" cx="125" cy="125" r="108" stroke-dasharray="678.58" stroke-dashoffset="678.58"/>
+          </svg>
+          <div class="ring-center">
+            <div class="lbl" id="foodLbl">Осталось</div>
+            <div class="food-num" id="foodLeft">0</div>
+            <div class="goal" id="foodSub">ккал из 2 000</div>
+          </div>
+        </div>
+        <div class="macros">
+          <div class="macro p" id="mProt"><small>Белки</small><b>0 <span>/ 0 г</span></b><div class="q-track"><i></i></div></div>
+          <div class="macro f" id="mFat"><small>Жиры</small><b>0 <span>/ 0 г</span></b><div class="q-track"><i></i></div></div>
+          <div class="macro c" id="mCarb"><small>Углеводы</small><b>0 <span>/ 0 г</span></b><div class="q-track"><i></i></div></div>
+        </div>
+      </div>
+
+      <div class="glass card">
+        <div class="day-switch">
+          <button id="foodPrev" aria-label="Предыдущий день">‹</button>
+          <div><b id="foodDayTitle">Сегодня</b><small id="foodDaySub">0 приёмов пищи</small></div>
+          <button id="foodNext" aria-label="Следующий день">›</button>
+        </div>
+        <div class="history" id="foodList"></div>
+        <button class="btn-main food-add" id="foodCamBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>
+          <span>СФОТОГРАФИРОВАТЬ ЕДУ</span>
+        </button>
+        <button class="btn-ghost food-manual" id="foodAddBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          <span>Добавить вручную</span>
+        </button>
+      </div>
+
+      <div class="glass card">
+        <div class="card-title"><h2>Дневная норма</h2><span>Миффлин — Сан Жеор</span></div>
+        <div class="seg goal-seg" id="foodGoalSeg"><div class="knob"></div><button data-goal="lose">Похудеть</button><button data-goal="keep">Поддерживать</button><button data-goal="gain">Набрать</button></div>
+        <div class="tdee"><b id="tdeeVal">2 000 <span>ккал</span></b><small id="tdeeInfo">норма по умолчанию</small></div>
+        <div class="food-hint" id="foodHint"></div>
+      </div>
+
+      <div class="glass card">
+        <div class="card-title"><h2>Индекс массы тела</h2><span>вес / рост²</span></div>
+        <div id="bmiBox"></div>
+      </div>
+    </section>
+
     <!-- ===== ДОСТИЖЕНИЯ ===== -->
     <section class="tab" id="tab-ach">
       <div class="glass score">
@@ -865,14 +1123,24 @@
       </div>
 
       <div class="social">
-        <button class="glass" data-stub>
+        <button class="glass" id="friendFindBtn">
           <div class="ico" style="background:rgba(34,227,255,.14);color:var(--cyan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg></div>
-          <b>Добавить друга</b>
+          <b>Найти друга</b>
         </button>
-        <button class="glass" data-stub>
+        <button class="glass" id="friendRankBtn">
           <div class="ico" style="background:rgba(255,61,154,.15);color:var(--pink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21V11M16 21V7M12 21V3M4 21h16"/></svg></div>
           <b>Рейтинг друзей</b>
         </button>
+      </div>
+
+      <div class="glass card" id="reqCard" hidden>
+        <div class="card-title"><h2>Запросы в друзья</h2><span id="reqCount">0</span></div>
+        <div class="fr-list" id="reqList"></div>
+      </div>
+
+      <div class="glass card" id="rankCard">
+        <div class="card-title"><h2>Рейтинг</h2><button class="rk-refresh" id="rankRefresh">шаги за сегодня · обновить</button></div>
+        <div class="fr-list" id="rankList"><div class="empty">Подключение…</div></div>
       </div>
 
       <div class="glass card">
@@ -890,6 +1158,13 @@
       <div class="glass card settings">
         <div class="card-title" style="margin-bottom:4px"><h2>Настройки</h2></div>
         <div class="row">
+          <div><b>Никнейм</b><small id="nickInfo">уникальный — по нему вас найдут друзья</small></div>
+          <div class="nick-field">
+            <input type="text" id="nickInput" maxlength="20" placeholder="ваш_ник" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="Никнейм">
+            <button class="chip-btn" id="nickSave">Сохранить</button>
+          </div>
+        </div>
+        <div class="row">
           <div><b>Дневная цель</b><small>шагов в день</small></div>
           <div class="stepper"><button id="goalMinus">−</button><span id="goalVal">10 000</span><button id="goalPlus">+</button></div>
         </div>
@@ -902,8 +1177,24 @@
           <label class="num-field"><input type="number" id="weightInput" inputmode="decimal" min="30" max="300" step="0.1" placeholder="—" aria-label="Вес в килограммах"><span>кг</span></label>
         </div>
         <div class="row">
+          <div><b>Пол</b><small>для расчёта нормы калорий</small></div>
+          <div class="sex-seg" id="sexSeg"><button data-sex="m">М</button><button data-sex="f">Ж</button></div>
+        </div>
+        <div class="row">
+          <div><b>Возраст</b><small>для расчёта нормы калорий</small></div>
+          <label class="num-field"><input type="number" id="ageInput" inputmode="numeric" min="10" max="120" step="1" placeholder="—" aria-label="Возраст в годах"><span>лет</span></label>
+        </div>
+        <div class="row">
           <div><b>Экспорт данных</b><small>CSV за всё время</small></div>
           <button class="chip-btn" id="csvBtn">Скачать историю шагов</button>
+        </div>
+        <div class="row">
+          <div><b>Резервная копия</b><small>весь прогресс в JSON-файле</small></div>
+          <div class="backup-btns">
+            <button class="chip-btn" id="backupSaveBtn">Сохранить копию</button>
+            <button class="chip-btn" id="backupLoadBtn">Загрузить копию</button>
+            <input type="file" id="backupFile" accept="application/json,.json" hidden>
+          </div>
         </div>
         <div class="row">
           <div><b>Демо-режим</b><small>симуляция шагов без датчика (для ПК)</small></div>
@@ -934,6 +1225,9 @@
     <button data-tab="workout">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span>Тренировки</span>
     </button>
+    <button data-tab="food">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7.5c-1.6-1.1-4.3-1.4-5.9.3-1.9 1.9-1.6 6 .3 9.3C7.8 19.7 9.8 21.6 12 20.6c2.2 1 4.2-.9 5.6-3.5 1.9-3.3 2.2-7.4.3-9.3-1.6-1.7-4.3-1.4-5.9-.3z"/><path d="M12 7.5c0-2.2 1-3.8 3.2-4.5"/></svg><span>Еда</span>
+    </button>
     <button data-tab="ach">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3"/></svg><span>Достижения</span>
     </button>
@@ -956,6 +1250,22 @@
     </div>
   </div>
 
+  <!-- ===== Поиск друга ===== -->
+  <div class="modal" id="friendModal" role="dialog" aria-modal="true" aria-labelledby="friendModalTitle">
+    <div class="shade" data-friend-close></div>
+    <div class="glass sheet friend-sheet">
+      <div class="m-ico" style="background:linear-gradient(135deg,#22e3ff,#6ef0a0);box-shadow:0 0 40px rgba(34,227,255,.35)">👥</div>
+      <h3 id="friendModalTitle">Найти друга</h3>
+      <p>Введите никнейм друга — регистр букв не важен</p>
+      <form class="fs-search" id="friendSearchForm" novalidate autocomplete="off">
+        <label class="f-field"><input type="text" id="friendNick" maxlength="20" placeholder="Никнейм" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Никнейм друга"></label>
+        <button type="submit" class="chip-btn" id="friendSearchBtn">Найти</button>
+      </form>
+      <div class="fs-result" id="friendResult"></div>
+      <div class="m-actions"><button type="button" class="btn-ghost" data-friend-close>Закрыть</button></div>
+    </div>
+  </div>
+
   <!-- ===== Колесо фортуны ===== -->
   <div class="modal" id="wheelModal" role="dialog" aria-modal="true" aria-labelledby="wheelTitle">
     <div class="shade" data-wheel-close></div>
@@ -971,6 +1281,64 @@
       <div class="m-actions">
         <button class="btn-ghost" id="wheelClose">Закрыть</button>
         <button class="btn-main" id="wheelSpin">Крутить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Добавление еды ===== -->
+  <div class="modal" id="foodModal" role="dialog" aria-modal="true" aria-labelledby="foodModalTitle">
+    <div class="shade" data-food-close></div>
+    <form class="glass sheet food-sheet" id="foodForm" novalidate autocomplete="off">
+      <h3 id="foodModalTitle">Добавить еду</h3>
+      <p id="foodModalNote">Запись попадёт в дневник за сегодня</p>
+      <img class="food-photo" id="fPhoto" alt="Фото блюда">
+      <div class="f-form">
+        <label class="f-field"><span>Название блюда</span><input type="text" id="fName" maxlength="60" placeholder="Например, овсянка с бананом" enterkeyhint="next"></label>
+        <div class="f-row two">
+          <label class="f-field"><span>Калории, ккал</span><input type="number" id="fKcal" inputmode="decimal" min="0" max="5000" step="1" placeholder="0"></label>
+          <label class="f-field"><span>Время</span><input type="time" id="fTime"></label>
+        </div>
+        <div class="f-row">
+          <label class="f-field"><span>Белки, г</span><input type="number" id="fProt" inputmode="decimal" min="0" max="500" step="0.1" placeholder="0"></label>
+          <label class="f-field"><span>Жиры, г</span><input type="number" id="fFat" inputmode="decimal" min="0" max="500" step="0.1" placeholder="0"></label>
+          <label class="f-field"><span>Углеводы, г</span><input type="number" id="fCarb" inputmode="decimal" min="0" max="500" step="0.1" placeholder="0"></label>
+        </div>
+      </div>
+      <div class="m-actions">
+        <button type="button" class="btn-ghost" id="foodCancel">Отмена</button>
+        <button type="submit" class="btn-main">Сохранить</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ===== Камера: распознавание еды ===== -->
+  <div class="cam" id="camModal" role="dialog" aria-modal="true" aria-labelledby="camTitle">
+    <video id="camVideo" autoplay playsinline muted></video>
+    <img class="cam-shot" id="camShot" alt="">
+    <div class="cam-top">
+      <b id="camTitle">Фото блюда</b>
+      <button class="cam-x" id="camClose" aria-label="Закрыть камеру">✕</button>
+    </div>
+    <div class="cam-frame"></div>
+    <div class="cam-bottom">
+      <small>Поместите блюдо в рамку</small>
+      <button class="btn-main" id="camSnap" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
+        <span>СДЕЛАТЬ СНИМОК</span>
+      </button>
+    </div>
+    <div class="cam-state cam-load" aria-live="polite">
+      <div class="ai-spin"><span>🍽️</span></div>
+      <h3>Нейросеть анализирует фото<span class="ai-dots"></span></h3>
+      <p>Определяем блюдо, калории и БЖУ</p>
+    </div>
+    <div class="cam-state cam-err" role="alert">
+      <div class="m-ico">📷</div>
+      <h3>Камера недоступна</h3>
+      <p id="camErrText">Не удалось открыть камеру.</p>
+      <div class="m-actions">
+        <button class="btn-ghost" id="camErrClose">Закрыть</button>
+        <button class="btn-main" id="camErrManual">Ввести вручную</button>
       </div>
     </div>
   </div>
@@ -1008,22 +1376,36 @@
         mute: false,                 // звуки выключены
         waterHist: {},               // { 'YYYY-MM-DD': стаканов } — последние 7 дней
         routes: [],                  // сохранённые GPS-маршруты: { start, end, dist, points: [[lat, lng], ...] }
-        curRoute: null               // маршрут, который пишется прямо сейчас
+        curRoute: null,              // маршрут, который пишется прямо сейчас
+        sex: null,                   // пол: 'm' | 'f' (null — не указан)
+        age: null,                   // возраст, лет (null — не указан)
+        foodGoal: 'keep',            // цель питания: 'lose' | 'keep' | 'gain'
+        foodDays: {},                // { 'YYYY-MM-DD': [ { time, name, kcal, protein, fat, carbs } ] }
+        streak: { count: 0, lastDate: null }, // дни подряд с выполненной целью; lastDate — последний такой день
+        nickname: null,              // уникальный ник в Firestore (null — не задан)
+        friends: [],                 // uid друзей
+        friendRequests: []           // входящие запросы: { id, from, fromNick } (обновляются из Firestore)
       };
     }
 
+    // Приводит сохранённый объект к актуальной структуре S (используется при загрузке и импорте копии)
+    function normalizeState(saved) {
+      const s = Object.assign(defaults(), saved && typeof saved === 'object' ? saved : {});
+      // повреждённые/устаревшие вложенные поля заменяем значениями по умолчанию
+      const d = defaults();
+      ['days', 'ach', 'waterHist', 'foodDays'].forEach((k) => { if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = d[k]; });
+      ['owned', 'workouts', 'routes', 'friends', 'friendRequests'].forEach((k) => { if (!Array.isArray(s[k])) s[k] = d[k]; });
+      s.pet = Object.assign(d.pet, s.pet);
+      s.boss = Object.assign(d.boss, s.boss);
+      s.streak = Object.assign(d.streak, s.streak && typeof s.streak === 'object' ? s.streak : {});
+      if (!Number.isFinite(s.streak.count) || s.streak.count < 0) s.streak.count = 0;
+      if (typeof s.streak.lastDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s.streak.lastDate)) { s.streak.lastDate = null; s.streak.count = 0; }
+      if (!Number.isFinite(s.goal) || s.goal < 1000) s.goal = d.goal;
+      return s;
+    }
     function load() {
       try {
-        const saved = JSON.parse(localStorage.getItem(STORE_KEY));
-        const s = Object.assign(defaults(), saved && typeof saved === 'object' ? saved : {});
-        // повреждённые/устаревшие вложенные поля заменяем значениями по умолчанию
-        const d = defaults();
-        ['days', 'ach', 'waterHist'].forEach((k) => { if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = d[k]; });
-        ['owned', 'workouts', 'routes'].forEach((k) => { if (!Array.isArray(s[k])) s[k] = d[k]; });
-        s.pet = Object.assign(d.pet, s.pet);
-        s.boss = Object.assign(d.boss, s.boss);
-        if (!Number.isFinite(s.goal) || s.goal < 1000) s.goal = d.goal;
-        return s;
+        return normalizeState(JSON.parse(localStorage.getItem(STORE_KEY)));
       } catch (e) {
         return defaults();
       }
@@ -1031,14 +1413,28 @@
 
     let S = load();
     if (!S.owned.includes('n-none')) S.owned.push('n-none');
+    // Дебаунс: каждый новый вызов save() откладывает запись ещё на SAVE_DELAY, поэтому во время
+    // ходьбы localStorage не трогается — данные пишутся, когда шаги прекратились.
+    // SAVE_MAX_WAIT — страховка: при непрерывной ходьбе запись всё равно случится не реже раза в 30 с.
+    const SAVE_DELAY = 2500;
+    const SAVE_MAX_WAIT = 30000;
     let saveTimer = null;
-    function save(now) {
-      const write = () => { clearTimeout(saveTimer); saveTimer = null; try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} };
-      // троттлинг, а не дебаунс: при частых шагах (< 400 мс) запись не откладывается бесконечно
-      if (now) write(); else if (!saveTimer) saveTimer = setTimeout(write, 400);
+    let saveFirstPending = 0;   // время первого несохранённого изменения (0 — всё сохранено)
+    function writeState() {
+      clearTimeout(saveTimer); saveTimer = null; saveFirstPending = 0;
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {}
     }
+    function save(now) {
+      cloudSyncSoon(now);
+      if (now) { writeState(); return; }
+      const t = Date.now();
+      if (!saveFirstPending) saveFirstPending = t;
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(writeState, Math.max(0, Math.min(SAVE_DELAY, saveFirstPending + SAVE_MAX_WAIT - t)));
+    }
+    // сворачивание, закрытие вкладки или выгрузка страницы — сохраняем мгновенно
     window.addEventListener('pagehide', () => save(true));
-    document.addEventListener('visibilitychange', () => { if (document.hidden) save(true); });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(true); });
 
     function dayKey(d = new Date()) {
       return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -1193,6 +1589,7 @@
       if (S.activeWorkout && !S.activeWorkout.pausedAt) S.activeWorkout.steps++;
       save();
       renderLive(true);
+      checkStreak();
       checkAchievements();
       bossHit();
     }
@@ -1646,12 +2043,15 @@
       $('muteSw').classList.toggle('on', !!S.mute);
       if (document.activeElement !== $('heightInput')) $('heightInput').value = S.height || '';
       if (document.activeElement !== $('weightInput')) $('weightInput').value = S.weight || '';
+      if (document.activeElement !== $('ageInput')) $('ageInput').value = S.age || '';
+      $('sexSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.sex === S.sex));
       $('weightInfo').textContent = S.weight ? '≈' + (kcalFor(1000)).toFixed(0) + ' ккал на 1 000 шагов' : 'иначе ~0.04 ккал на шаг';
     }
     function changeGoal(delta) {
       S.goal = Math.min(30000, Math.max(1000, S.goal + delta));
       save(); renderSettings();
       renderLive(); renderWeek(); // кольцо, прогресс-бар и график недели пересчитываются сразу
+      checkStreak();
     }
     $('goalMinus').addEventListener('click', () => changeGoal(-1000));
     $('goalPlus').addEventListener('click', () => changeGoal(1000));
@@ -1685,7 +2085,7 @@
     // Сброс только шагов: имя, скины, босс, питомец, вода, маршруты и настройки остаются
     function resetSteps() {
       if (isTracking) stopTracking();
-      const keep = ['name', 'owned', 'frame', 'bg', 'font', 'boss', 'pet', 'goal', 'demo', 'height', 'weight', 'mute', 'waterHist', 'routes'];
+      const keep = ['name', 'owned', 'frame', 'bg', 'font', 'boss', 'pet', 'goal', 'demo', 'height', 'weight', 'mute', 'waterHist', 'routes', 'sex', 'age', 'foodGoal', 'foodDays'];
       const fresh = defaults();
       keep.forEach((k) => { fresh[k] = S[k]; });
       if (S.daily && S.daily.day === dayKey()) {
@@ -1695,15 +2095,16 @@
         fresh.daily = { ...S.daily, workouts: 0, claimed, bossDmg: 0 };
       }
       S = fresh;
+      lastStreakDay = null;
       save(true); renderAll(); runWorkoutUI();
-      toast('👟', 'Шаги сброшены', 'Имя, скины и босс сохранены');
+      toast('👟', 'Шаги сброшены', 'Имя, скины, босс и дневник питания сохранены');
     }
     // Полный сброс: всё приложение, включая кейс, колесо и калибровку
     function resetAll() {
       if (isTracking) stopTracking();
       try { [STORE_KEY, CALIB_KEY, CASE_KEY, SPIN_KEY, WEATHER_KEY].forEach((k) => localStorage.removeItem(k)); } catch (e) {}
       calib = null;
-      S = defaults(); save(true); renderAll(); runWorkoutUI(); clearMapRoutes();
+      S = defaults(); lastStreakDay = null; save(true); renderAll(); runWorkoutUI(); clearMapRoutes();
       toast('🧹', 'Данные сброшены', 'Начинаем с чистого листа');
     }
     $('resetBtn').addEventListener('click', () => openModal({
@@ -1716,10 +2117,6 @@
       ]
     }));
 
-    // Заглушки для друзей
-    document.querySelectorAll('[data-stub]').forEach((b) => b.addEventListener('click', () => openModal({
-      icon: '👥', title: b.textContent.trim(), text: 'Для синхронизации с друзьями нужен сервер. Скоро!', actions: [{ label: 'Понятно' }]
-    })));
 
     // ================================================================
     //  МОДАЛКА, ТОСТЫ, КОНФЕТТИ
@@ -2114,13 +2511,19 @@
         const v = parseFloat(raw);
         if (!raw) S[key] = null;
         else if (!Number.isFinite(v) || v < min || v > max) { toast('⚠️', 'Проверьте ' + label, 'Допустимо от ' + min + ' до ' + max); renderSettings(); return; }
-        else S[key] = Math.round(v * 10) / 10;
-        save(true); renderSettings(); renderLive();
+        else S[key] = key === 'age' ? Math.round(v) : Math.round(v * 10) / 10;
+        save(true); renderSettings(); renderLive(); renderFood();
       });
       $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
     }
     bindBodyInput('heightInput', 'height', 100, 250, 'рост');
     bindBodyInput('weightInput', 'weight', 30, 300, 'вес');
+    bindBodyInput('ageInput', 'age', 10, 120, 'возраст');
+    $('sexSeg').addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      S.sex = S.sex === b.dataset.sex ? null : b.dataset.sex; // повторное нажатие снимает выбор
+      save(true); renderSettings(); renderFood();
+    });
 
     function exportCsv() {
       const keys = Object.keys(S.days).sort();
@@ -2139,6 +2542,145 @@
       toast('📄', 'История выгружена', keys.length + ' ' + plural(keys.length, 'день', 'дня', 'дней') + ' в CSV');
     }
     $('csvBtn').addEventListener('click', exportCsv);
+
+    // ================================================================
+    //  РЕЗЕРВНАЯ КОПИЯ (экспорт / импорт JSON)
+    // ================================================================
+    const BACKUP_APP = 'stride';
+    function exportBackup() {
+      save(true);
+      const payload = { app: BACKUP_APP, version: 2, exportedAt: new Date().toISOString(), data: S };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'stride-backup-' + dayKey() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      toast('💾', 'Копия сохранена', 'Файл ' + a.download + ' — храните его в надёжном месте');
+    }
+
+    // Проверка структуры: возвращает текст ошибки или null, если копию можно загружать
+    function validateBackup(data) {
+      const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+      const isNum = (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+      if (!isObj(data)) return 'Файл не похож на копию Stride';
+      if (!isObj(data.days) || !isNum(data.total) || !isNum(data.coins)) return 'В файле нет истории шагов или счёта монет';
+      for (const [k, d] of Object.entries(data.days)) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !isObj(d) || !isNum(d.steps)) return 'Повреждена история шагов (' + String(k).slice(0, 20) + ')';
+      }
+      if (data.goal != null && !isNum(data.goal)) return 'Неверная дневная цель';
+      const objs = ['ach', 'waterHist', 'foodDays', 'pet', 'boss', 'streak'];
+      const arrs = ['owned', 'workouts', 'routes'];
+      for (const k of objs) if (data[k] != null && !isObj(data[k])) return 'Неверный формат поля «' + k + '»';
+      for (const k of arrs) if (data[k] != null && !Array.isArray(data[k])) return 'Неверный формат поля «' + k + '»';
+      if (data.foodDays) {
+        for (const list of Object.values(data.foodDays)) {
+          if (!Array.isArray(list) || list.some((x) => !isObj(x) || typeof x.name !== 'string' || !isNum(x.kcal))) return 'Повреждён дневник питания';
+        }
+      }
+      return null;
+    }
+
+    function applyBackup(data) {
+      if (isTracking) stopTracking();
+      S = normalizeState(data);
+      if (!S.owned.includes('n-none')) S.owned.push('n-none');
+      save(true); renderAll(); runWorkoutUI(); clearMapRoutes();
+      lastStreakDay = null; checkStreak();
+      toast('✅', 'Копия загружена', fmt(S.total) + ' ' + plural(S.total, 'шаг', 'шага', 'шагов') + ' · ' + fmt(S.coins) + ' монет');
+    }
+
+    function importBackup(file) {
+      if (!file) return;
+      if (file.size > 20 * 1024 * 1024) { toast('⚠️', 'Слишком большой файл', 'Копия Stride обычно весит меньше пары мегабайт'); return; }
+      const reader = new FileReader();
+      reader.onerror = () => toast('⚠️', 'Не удалось прочитать файл', 'Попробуйте выбрать его ещё раз');
+      reader.onload = () => {
+        let parsed;
+        try { parsed = JSON.parse(String(reader.result).replace(/^\uFEFF/, '')); }
+        catch (e) { toast('⚠️', 'Это не JSON', 'Выберите файл stride-backup-….json'); return; }
+        // принимаем и обёртку { app, data }, и «голый» объект S
+        if (parsed && parsed.app && parsed.app !== BACKUP_APP) { toast('⚠️', 'Чужой файл', 'Это копия другого приложения'); return; }
+        const data = parsed && parsed.app === BACKUP_APP && parsed.data ? parsed.data : parsed;
+        const err = validateBackup(data);
+        if (err) { toast('⚠️', 'Копия не подходит', err); return; }
+        const when = parsed.exportedAt && !isNaN(Date.parse(parsed.exportedAt)) ? ' от ' + new Date(parsed.exportedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+        openModal({
+          icon: '📦', title: 'Загрузить копию' + when + '?',
+          text: 'В копии ' + fmt(data.total) + ' ' + plural(data.total, 'шаг', 'шага', 'шагов') + ' и ' + fmt(data.coins) + ' монет. Текущий прогресс будет заменён — при необходимости сначала сохраните его.',
+          stack: true,
+          actions: [
+            { label: 'Загрузить', onClick: () => applyBackup(data) },
+            { label: 'Отмена', ghost: true }
+          ]
+        });
+      };
+      reader.readAsText(file);
+    }
+    $('backupSaveBtn').addEventListener('click', exportBackup);
+    $('backupLoadBtn').addEventListener('click', () => $('backupFile').click());
+    $('backupFile').addEventListener('change', (e) => {
+      importBackup(e.target.files[0]);
+      e.target.value = ''; // чтобы тот же файл можно было выбрать повторно
+    });
+
+    // ================================================================
+    //  СТРИК (дни подряд с выполненной целью)
+    // ================================================================
+    const STREAK_BONUS_EVERY = 3;   // каждые 3 дня подряд…
+    const STREAK_BONUS = 50;        // …+50 монет
+    let lastStreakDay = null;       // день, за который цель уже засчитана в этой сессии — быстрый выход в addStep
+
+    function shiftDay(key, delta) {
+      const d = new Date(key + 'T12:00:00'); d.setDate(d.getDate() + delta);
+      return dayKey(d);
+    }
+    // Актуальное значение: если последний выполненный день старше вчерашнего, серия прервана
+    function streakCount() {
+      const st = S.streak, k = dayKey();
+      return st.lastDate === k || st.lastDate === shiftDay(k, -1) ? st.count : 0;
+    }
+
+    function checkStreak() {
+      const k = dayKey();
+      if (lastStreakDay === k) return;
+      const st = S.streak;
+      if (st.lastDate === k) { lastStreakDay = k; return; }   // сегодня уже засчитано
+      if (today().steps < S.goal) return;
+      // первый раз за сегодня выполнили цель
+      st.count = st.lastDate === shiftDay(k, -1) ? st.count + 1 : 1; // вчера не выполнено — серия начинается заново
+      st.lastDate = k;
+      lastStreakDay = k;
+      save(true);
+      renderStreak(true);
+      if (st.count % STREAK_BONUS_EVERY === 0) {
+        grantCoins(STREAK_BONUS);
+        toast('🔥', st.count + ' ' + plural(st.count, 'день', 'дня', 'дней') + ' подряд!', 'Бонус за стрик: +' + STREAK_BONUS + ' монет');
+        confetti();
+      } else {
+        const left = STREAK_BONUS_EVERY - st.count % STREAK_BONUS_EVERY;
+        toast('🔥', 'Стрик: ' + st.count + ' ' + plural(st.count, 'день', 'дня', 'дней'), 'До бонуса +' + STREAK_BONUS + ' монет — ещё ' + left + ' ' + plural(left, 'день', 'дня', 'дней'));
+      }
+    }
+
+    function renderStreak(bump) {
+      const n = streakCount(), doneToday = S.streak.lastDate === dayKey();
+      const el = $('streakPill');
+      $('streakNum').textContent = n;
+      el.classList.toggle('on', n > 0 && doneToday);
+      el.classList.toggle('wait', n > 0 && !doneToday);   // серия жива, но сегодня цель ещё не выполнена
+      el.classList.toggle('hot', n > 3 && doneToday);
+      if (bump) { el.classList.add('bump'); setTimeout(() => el.classList.remove('bump'), 350); }
+    }
+    $('streakPill').addEventListener('click', () => {
+      const n = streakCount(), doneToday = S.streak.lastDate === dayKey();
+      const left = STREAK_BONUS_EVERY - n % STREAK_BONUS_EVERY;
+      const rest = Math.max(0, S.goal - today().steps);
+      if (!n) toast('🔥', 'Стрик пока 0', 'Пройдите ' + fmt(S.goal) + ' шагов сегодня, чтобы начать серию');
+      else if (doneToday) toast('🔥', n + ' ' + plural(n, 'день', 'дня', 'дней') + ' подряд', 'Цель на сегодня выполнена. До бонуса +' + STREAK_BONUS + ' — ' + left + ' ' + plural(left, 'день', 'дня', 'дней'));
+      else toast('🔥', n + ' ' + plural(n, 'день', 'дня', 'дней') + ' подряд', 'Осталось ' + fmt(rest) + ' шагов, чтобы не потерять серию');
+    });
 
     // ================================================================
     //  ПИТОМЕЦ
@@ -2493,9 +3035,574 @@
     }
 
     // ================================================================
+    //  ДНЕВНИК ПИТАНИЯ: норма (Миффлин — Сан Жеор), ИМТ, приёмы пищи
+    // ================================================================
+    const FOOD_GOALS = { lose: 0.8, keep: 1, gain: 1.2 };
+    const FOOD_GOAL_KEYS = ['lose', 'keep', 'gain'];
+    const DEFAULT_KCAL = 2000;
+    const MACRO_SPLIT = { protein: [0.25, 4], fat: [0.3, 9], carbs: [0.45, 4] }; // доля калорий, ккал на грамм
+    let foodDay = null; // просматриваемый день; null — сегодня
+    const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    const num1 = (n) => (Math.round(n * 10) / 10).toLocaleString('ru-RU');
+
+    function shiftDay(key, delta) {
+      const [y, m, d] = key.split('-').map(Number);
+      return dayKey(new Date(y, m - 1, d + delta));
+    }
+    // Коэффициент активности — по среднему числу шагов за прошлые 7 дней
+    function activityLevel() {
+      let sum = 0, k = dayKey();
+      for (let i = 0; i < 7; i++) { k = shiftDay(k, -1); sum += (S.days[k] && S.days[k].steps) || 0; }
+      const avg = sum / 7;
+      if (avg >= 10000) return { f: 1.725, avg, name: 'высокая активность' };
+      if (avg >= 7500) return { f: 1.55, avg, name: 'средняя активность' };
+      if (avg >= 5000) return { f: 1.375, avg, name: 'лёгкая активность' };
+      return { f: 1.2, avg, name: 'малоподвижный образ' };
+    }
+    function calcNorm() {
+      const missing = [];
+      if (!S.sex) missing.push('пол');
+      if (!S.age) missing.push('возраст');
+      if (!S.height) missing.push('рост');
+      if (!S.weight) missing.push('вес');
+      const mult = FOOD_GOALS[S.foodGoal] || 1;
+      if (missing.length) return { kcal: Math.round(DEFAULT_KCAL * mult), missing };
+      const bmr = 10 * S.weight + 6.25 * S.height - 5 * S.age + (S.sex === 'm' ? 5 : -161);
+      const act = activityLevel();
+      const tdee = bmr * act.f;
+      return { kcal: Math.round(tdee * mult), bmr: Math.round(bmr), tdee: Math.round(tdee), act, missing };
+    }
+    function foodEntries(key) { return S.foodDays[key] || []; }
+    function foodTotals(list) {
+      return list.reduce((t, x) => ({ kcal: t.kcal + (+x.kcal || 0), protein: t.protein + (+x.protein || 0), fat: t.fat + (+x.fat || 0), carbs: t.carbs + (+x.carbs || 0) }), { kcal: 0, protein: 0, fat: 0, carbs: 0 });
+    }
+
+    function renderFood() {
+      const todayK = dayKey();
+      if (foodDay && foodDay >= todayK) foodDay = null;
+      const key = foodDay || todayK;
+      const list = foodEntries(key);
+      const tot = foodTotals(list);
+      const norm = calcNorm();
+
+      // Круг калорий
+      const left = norm.kcal - tot.kcal;
+      const over = left < 0;
+      $('foodRingWrap').classList.toggle('over', over);
+      $('foodRing').style.strokeDashoffset = RING_LEN * (1 - Math.min(1, tot.kcal / norm.kcal));
+      $('foodLbl').textContent = over ? 'Перебор' : 'Осталось';
+      $('foodLeft').textContent = (over ? '+' : '') + fmt(Math.abs(left));
+      $('foodSub').textContent = 'съедено ' + fmt(tot.kcal) + ' из ' + fmt(norm.kcal) + ' ккал';
+
+      // БЖУ относительно нормы
+      [['mProt', 'protein'], ['mFat', 'fat'], ['mCarb', 'carbs']].forEach(([id, k]) => {
+        const target = norm.kcal * MACRO_SPLIT[k][0] / MACRO_SPLIT[k][1];
+        const el = $(id);
+        el.querySelector('b').innerHTML = num1(tot[k]) + ' <span>/ ' + fmt(target) + ' г</span>';
+        el.querySelector('i').style.width = Math.min(100, tot[k] / target * 100) + '%';
+        el.classList.toggle('over', tot[k] > target * 1.1);
+      });
+
+      // Переключатель дат
+      const d = new Date(key + 'T12:00:00');
+      const isToday = key === todayK;
+      $('foodDayTitle').textContent = isToday ? 'Сегодня' : key === shiftDay(todayK, -1) ? 'Вчера' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+      $('foodDaySub').textContent = (isToday ? '' : d.toLocaleDateString('ru-RU', { weekday: 'long' }) + ' · ') + list.length + ' ' + plural(list.length, 'приём', 'приёма', 'приёмов') + ' пищи';
+      $('foodNext').disabled = isToday;
+
+      // Список приёмов пищи
+      $('foodList').innerHTML = list.length ? list.map((x, i) => `
+        <div class="h-item meal">
+          <div class="em">${esc(x.time)}</div>
+          <div class="info"><b>${esc(x.name)}</b><small>Б ${num1(x.protein || 0)} · Ж ${num1(x.fat || 0)} · У ${num1(x.carbs || 0)} г</small></div>
+          <div class="val">${fmt(x.kcal)}<small>ккал</small></div>
+          <button class="del" data-del="${i}" aria-label="Удалить ${esc(x.name)}">✕</button>
+        </div>`).join('') : `<div class="empty">${isToday ? 'Сегодня пока ничего не записано' : 'В этот день записей нет'}</div>`;
+
+      // Цель и норма
+      const gi = Math.max(0, FOOD_GOAL_KEYS.indexOf(S.foodGoal));
+      $('foodGoalSeg').querySelector('.knob').style.transform = 'translateX(' + (gi * 100) + '%)';
+      $('foodGoalSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.goal === FOOD_GOAL_KEYS[gi]));
+      $('tdeeVal').innerHTML = fmt(norm.kcal) + ' <span>ккал/день</span>';
+      const goalTxt = { lose: '−20% для похудения', keep: 'поддержание веса', gain: '+20% для набора' }[FOOD_GOAL_KEYS[gi]];
+      if (norm.missing.length) {
+        $('tdeeInfo').textContent = 'по умолчанию · ' + goalTxt;
+        $('foodHint').innerHTML = 'Укажите в профиле: ' + norm.missing.join(', ') + ' — и норма рассчитается под вас.<br><button class="chip-btn" data-go-profile>Заполнить профиль</button>';
+      } else {
+        $('tdeeInfo').textContent = goalTxt;
+        $('foodHint').textContent = 'Базовый обмен ' + fmt(norm.bmr) + ' ккал × ' + norm.act.f + ' (' + norm.act.name + ', в среднем ' + fmt(norm.act.avg) + ' шагов за неделю) = ' + fmt(norm.tdee) + ' ккал.';
+      }
+
+      // ИМТ
+      if (S.height && S.weight) {
+        const bmi = S.weight / Math.pow(S.height / 100, 2);
+        const cat = bmi < 18.5 ? ['Недостаток веса', 'warn'] : bmi < 25 ? ['Норма', ''] : bmi < 30 ? ['Избыток веса', 'warn'] : ['Ожирение', 'bad'];
+        const pos = Math.min(100, Math.max(0, (bmi - 15) / 25 * 100));
+        $('bmiBox').innerHTML = `
+          <div class="bmi-head"><div class="bmi-val">${num1(bmi)}</div><div class="bmi-cat ${cat[1]}">${cat[0]}</div></div>
+          <div class="bmi-scale"><i style="left:${pos}%"></i></div>
+          <div class="bmi-legend"><span>15</span><span>18.5</span><span>25</span><span>30</span><span>40</span></div>`;
+      } else {
+        $('bmiBox').innerHTML = '<div class="food-hint" style="margin:0">Укажите рост и вес в профиле, чтобы узнать ИМТ.<br><button class="chip-btn" data-go-profile>Заполнить профиль</button></div>';
+      }
+    }
+
+    $('foodPrev').addEventListener('click', () => { foodDay = shiftDay(foodDay || dayKey(), -1); renderFood(); });
+    $('foodNext').addEventListener('click', () => { if (foodDay) { foodDay = shiftDay(foodDay, 1); renderFood(); } });
+    $('foodGoalSeg').addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      S.foodGoal = b.dataset.goal; save(true); renderFood();
+    });
+    $('tab-food').addEventListener('click', (e) => { if (e.target.closest('[data-go-profile]')) switchTab('profile'); });
+    $('foodList').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-del]'); if (!b) return;
+      const key = foodDay || dayKey();
+      const list = foodEntries(key);
+      const [removed] = list.splice(Number(b.dataset.del), 1);
+      if (!removed) return;
+      if (!list.length) delete S.foodDays[key];
+      save(true); renderFood();
+      toast('🗑️', 'Запись удалена', removed.name + ' · ' + fmt(removed.kcal) + ' ккал');
+    });
+
+    // Модалка добавления еды
+    const FOOD_FIELDS = ['fName', 'fKcal', 'fProt', 'fFat', 'fCarb'];
+    // prefill — данные от распознавания { name, kcal, protein, fat, carbs }, photo — снимок (Base64)
+    function openFoodModal(prefill, photo) {
+      const data = prefill && typeof prefill === 'object' && 'name' in prefill ? prefill : null;
+      const vals = data ? { fName: data.name, fKcal: data.kcal, fProt: data.protein, fFat: data.fat, fCarb: data.carbs } : {};
+      FOOD_FIELDS.forEach((id) => { $(id).value = vals[id] != null ? vals[id] : ''; $(id).classList.remove('bad'); });
+      const now = new Date();
+      $('fTime').value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      const where = foodDay ? 'за ' + new Date(foodDay + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : 'за сегодня';
+      $('foodModalTitle').textContent = data ? 'Проверьте блюдо' : 'Добавить еду';
+      $('foodModalNote').textContent = data ? 'Распознано нейросетью — поправьте, если что-то не так. Запись попадёт в дневник ' + where : 'Запись попадёт в дневник ' + where;
+      $('fPhoto').classList.toggle('show', !!(data && photo));
+      if (data && photo) $('fPhoto').src = photo; else $('fPhoto').removeAttribute('src');
+      $('foodModal').classList.add('open');
+      if (!data) setTimeout(() => $('fName').focus(), 350);
+    }
+    function closeFoodModal() {
+      $('foodModal').classList.remove('open'); document.activeElement && document.activeElement.blur();
+      $('fPhoto').classList.remove('show'); $('fPhoto').removeAttribute('src');
+    }
+    $('foodAddBtn').addEventListener('click', () => openFoodModal());
+    $('foodCancel').addEventListener('click', closeFoodModal);
+    $('foodModal').addEventListener('click', (e) => { if (e.target.hasAttribute('data-food-close')) closeFoodModal(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if ($('camModal').classList.contains('open')) closeCamera(); else closeFoodModal();
+    });
+
+    // ================================================================
+    //  РАСПОЗНАВАНИЕ ЕДЫ ПО ФОТО (камера + заглушка нейросети)
+    // ================================================================
+    const MOCK_DISHES = [
+      { name: 'Гречка с курицей', kcal: 350, protein: 30, fat: 10, carbs: 40 },
+      { name: 'Салат Цезарь', kcal: 250, protein: 14, fat: 17, carbs: 11 },
+      { name: 'Овсянка с бананом', kcal: 310, protein: 9, fat: 6, carbs: 55 },
+      { name: 'Борщ со сметаной', kcal: 220, protein: 8, fat: 11, carbs: 22 },
+      { name: 'Паста карбонара', kcal: 520, protein: 21, fat: 24, carbs: 54 },
+      { name: 'Омлет с овощами', kcal: 280, protein: 18, fat: 20, carbs: 7 },
+      { name: 'Лосось с рисом', kcal: 480, protein: 32, fat: 18, carbs: 46 },
+      { name: 'Творог с ягодами', kcal: 190, protein: 22, fat: 5, carbs: 14 },
+      { name: 'Пицца Маргарита (2 куска)', kcal: 540, protein: 22, fat: 20, carbs: 66 },
+      { name: 'Плов с говядиной', kcal: 430, protein: 19, fat: 16, carbs: 52 },
+    ];
+    let camStream = null;    // активный MediaStream
+    let camSession = 0;      // растёт при каждом открытии/закрытии — отсекает устаревшие ответы
+    let foodPhoto = null;    // последний снимок (Base64, data URL)
+
+    // Заглушка API: через 2 секунды возвращает случайное блюдо
+    function mockRecognizeFood(photoBase64) {
+      return new Promise((resolve) => {
+        setTimeout(() => resolve({ ...MOCK_DISHES[Math.floor(Math.random() * MOCK_DISHES.length)] }), 2000);
+      });
+    }
+
+    function stopCamera() {
+      if (camStream) camStream.getTracks().forEach((track) => track.stop());
+      camStream = null;
+      const v = $('camVideo');
+      v.pause(); v.srcObject = null;
+      $('camSnap').disabled = true;
+    }
+    function setCamState(state, errText) {
+      const m = $('camModal');
+      m.classList.toggle('busy', state === 'busy');
+      m.classList.toggle('err', state === 'err');
+      if (errText) $('camErrText').textContent = errText;
+    }
+    function camErrorText(err) {
+      if (!window.isSecureContext) return 'Камера работает только по HTTPS. Откройте приложение по защищённой ссылке.';
+      if (!err) return 'Этот браузер или устройство не поддерживает доступ к камере. Добавьте блюдо вручную.';
+      switch (err.name) {
+        case 'NotAllowedError': case 'SecurityError': return 'Доступ к камере запрещён. Разрешите его в настройках браузера и попробуйте снова.';
+        case 'NotFoundError': case 'OverconstrainedError': return 'Камера не найдена на этом устройстве. Добавьте блюдо вручную.';
+        case 'NotReadableError': case 'AbortError': return 'Камера занята другим приложением. Закройте его и попробуйте снова.';
+        default: return 'Не удалось открыть камеру. Добавьте блюдо вручную.';
+      }
+    }
+
+    async function openCamera() {
+      const session = ++camSession;
+      foodPhoto = null;
+      $('camShot').removeAttribute('src');
+      setCamState('live');
+      $('camSnap').disabled = true;
+      $('camModal').classList.add('open');
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { setCamState('err', camErrorText(null)); return; }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        // окно закрыли, пока браузер спрашивал разрешение, — сразу гасим поток
+        if (session !== camSession) { stream.getTracks().forEach((track) => track.stop()); return; }
+        camStream = stream;
+        const v = $('camVideo');
+        v.srcObject = stream;
+        await v.play().catch(() => {});
+        $('camSnap').disabled = false;
+      } catch (err) {
+        if (session === camSession) setCamState('err', camErrorText(err));
+      }
+    }
+    function closeCamera() {
+      camSession++;
+      stopCamera();
+      $('camModal').classList.remove('open');
+      setTimeout(() => { if (!$('camModal').classList.contains('open')) setCamState('live'); }, 300);
+    }
+
+    async function snapFood() {
+      const v = $('camVideo');
+      if (!camStream || !v.videoWidth) return;
+      // кадр в canvas, сторона не больше 1024 px — меньше Base64 для будущего API
+      const scale = Math.min(1, 1024 / Math.max(v.videoWidth, v.videoHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(v.videoWidth * scale); c.height = Math.round(v.videoHeight * scale);
+      c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+      foodPhoto = c.toDataURL('image/jpeg', 0.85);
+      stopCamera();
+      if (navigator.vibrate) navigator.vibrate(20);
+      $('camShot').src = foodPhoto;
+      setCamState('busy');
+      const session = camSession;
+      try {
+        const dish = await mockRecognizeFood(foodPhoto);
+        if (session !== camSession) return; // пользователь закрыл окно во время анализа
+        const photo = foodPhoto;
+        closeCamera();
+        openFoodModal(dish, photo);
+      } catch (err) {
+        if (session === camSession) setCamState('err', 'Не удалось распознать блюдо. Попробуйте ещё раз или введите данные вручную.');
+      }
+    }
+
+    $('foodCamBtn').addEventListener('click', openCamera);
+    $('camSnap').addEventListener('click', snapFood);
+    $('camClose').addEventListener('click', closeCamera);
+    $('camErrClose').addEventListener('click', closeCamera);
+    $('camErrManual').addEventListener('click', () => { closeCamera(); openFoodModal(); });
+    // свернули приложение — камеру не держим
+    document.addEventListener('visibilitychange', () => { if (document.hidden && camStream) closeCamera(); });
+    window.addEventListener('pagehide', stopCamera);
+    $('foodForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const readNum = (id, max, required) => {
+        const raw = $(id).value.trim().replace(',', '.');
+        const v = raw === '' ? (required ? NaN : 0) : parseFloat(raw);
+        const ok = Number.isFinite(v) && v >= 0 && v <= max;
+        $(id).classList.toggle('bad', !ok);
+        return ok ? Math.round(v * 10) / 10 : null;
+      };
+      const name = $('fName').value.trim();
+      $('fName').classList.toggle('bad', !name);
+      const kcal = readNum('fKcal', 5000, true);
+      const protein = readNum('fProt', 500), fat = readNum('fFat', 500), carbs = readNum('fCarb', 500);
+      if (!name || kcal === null || protein === null || fat === null || carbs === null) {
+        toast('⚠️', 'Проверьте поля', 'Нужны название и калории (0–5000), БЖУ — до 500 г');
+        return;
+      }
+      const time = /^\d{2}:\d{2}$/.test($('fTime').value) ? $('fTime').value : new Date().toTimeString().slice(0, 5);
+      const key = foodDay || dayKey();
+      const list = S.foodDays[key] || (S.foodDays[key] = []);
+      list.push({ time, name, kcal: Math.round(kcal), protein, fat, carbs });
+      list.sort((a, b) => a.time.localeCompare(b.time));
+      save(true); closeFoodModal(); renderFood();
+      toast('🍎', 'Добавлено в дневник', name + ' · ' + fmt(kcal) + ' ккал');
+      if (navigator.vibrate) navigator.vibrate(15);
+    });
+
+    // ================================================================
+    //  ДРУЗЬЯ (Firebase: Auth + Firestore)
+    //  users/{uid}: { uid, nickname, nicknameLower, totalSteps, todaySteps, todayDate, friends: [uid] }
+    //  friendRequests/{id}: { from, fromNick, to, status: 'pending', createdAt }
+    // ================================================================
+    // var, а не let: save() может вызываться до того, как выполнится этот блок
+    var myUid = null;
+    var fbFailed = false;
+    var cloudMe;                  // undefined — ещё не загружен, null — документа нет, объект — мой профиль
+    var cloudTimer = null, cloudFirstPending = 0;
+    const CLOUD_DELAY = 8000;     // дебаунс записи шагов в Firestore
+    const CLOUD_MAX_WAIT = 60000; // при непрерывной ходьбе — не реже раза в минуту
+    const NICK_RE = /^[a-zA-Zа-яА-ЯёЁ0-9_.-]{3,20}$/;
+    const nickKey = (n) => String(n || '').trim().toLowerCase();
+    const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const initial = (n) => (String(n || '?').trim()[0] || '?').toUpperCase();
+    const userRef = (uid) => FB.doc(FB.db, 'users', uid);
+
+    function cloudSyncSoon(now) {
+      if (!myUid || !S.nickname) return;
+      if (now) { cloudSync(); return; }
+      const t = Date.now();
+      if (!cloudFirstPending) cloudFirstPending = t;
+      clearTimeout(cloudTimer);
+      cloudTimer = setTimeout(cloudSync, Math.max(0, Math.min(CLOUD_DELAY, cloudFirstPending + CLOUD_MAX_WAIT - t)));
+    }
+    let lastCloud = '';
+    function cloudSync() {
+      clearTimeout(cloudTimer); cloudTimer = null; cloudFirstPending = 0;
+      if (!myUid || !S.nickname) return;
+      const data = { todaySteps: today().steps, totalSteps: S.total, todayDate: dayKey() };
+      const sig = JSON.stringify(data);
+      if (sig === lastCloud) return; // ничего не изменилось — не пишем
+      lastCloud = sig;
+      FB.updateDoc(userRef(myUid), data).catch((e) => { lastCloud = ''; console.warn('Firestore: синхронизация шагов', e); });
+    }
+
+    // Облачный профиль — источник правды для ника и списка друзей (переживает сброс и импорт копии)
+    function applyCloudMe() {
+      if (cloudMe === undefined) return false;
+      let changed = false;
+      const nick = cloudMe ? cloudMe.nickname || null : null;
+      if (S.nickname !== nick) { S.nickname = nick; changed = true; }
+      if (cloudMe && Array.isArray(cloudMe.friends)) {
+        cloudMe.friends.forEach((uid) => { if (uid && uid !== myUid && !S.friends.includes(uid)) { S.friends.push(uid); changed = true; } });
+      }
+      return changed;
+    }
+
+    function onFirebaseReady(uid) {
+      if (myUid) return;
+      myUid = uid;
+      // мой профиль: ник и друзья (отправитель узнаёт о принятом запросе отсюда)
+      FB.onSnapshot(userRef(myUid), (snap) => {
+        const prevFriends = S.friends.length;
+        cloudMe = snap.exists() ? snap.data() : null;
+        if (applyCloudMe()) save(true);
+        renderFriends();
+        if (S.friends.length !== prevFriends) refreshRating(true);
+      }, (e) => { console.warn('Firestore: профиль', e); });
+      // входящие запросы в друзья
+      const q = FB.query(FB.collection(FB.db, 'friendRequests'), FB.where('to', '==', myUid), FB.where('status', '==', 'pending'));
+      FB.onSnapshot(q, (snap) => {
+        S.friendRequests = snap.docs.map((d) => ({ id: d.id, from: d.data().from, fromNick: d.data().fromNick || '' }))
+          .filter((r) => r.from && !S.friends.includes(r.from));
+        renderFriends();
+      }, (e) => { console.warn('Firestore: запросы', e); });
+      cloudSyncSoon(true);
+      refreshRating(true);
+    }
+    function onFirebaseError() { fbFailed = true; renderFriends(); renderRating(); }
+    window.addEventListener('fb-ready', (e) => onFirebaseReady(e.detail));
+    window.addEventListener('fb-error', onFirebaseError);
+    if (window.FB && window.FB.uid) onFirebaseReady(window.FB.uid);
+    else if (window.FB && window.FB.error) fbFailed = true;
+
+    function renderFriends() {
+      if (applyCloudMe()) save(true);
+      // никнейм в настройках
+      const inp = $('nickInput');
+      if (document.activeElement !== inp) inp.value = S.nickname || '';
+      const info = $('nickInfo');
+      info.classList.remove('nick-err');
+      info.textContent = fbFailed ? 'нет связи с сервером' : !myUid ? 'подключение…' : S.nickname ? 'вас находят по нику @' + S.nickname : 'уникальный — по нему вас найдут друзья';
+      // входящие запросы
+      const reqs = S.friendRequests || [];
+      $('reqCard').hidden = !reqs.length;
+      $('reqCount').textContent = reqs.length + ' ' + plural(reqs.length, 'новый', 'новых', 'новых');
+      $('reqList').innerHTML = reqs.map((r) => `
+        <div class="fr-item">
+          <div class="fr-ava"><span>${escapeHtml(initial(r.fromNick))}</span></div>
+          <div class="fr-body"><b>@${escapeHtml(r.fromNick || 'без ника')}</b><small>хочет добавить вас в друзья</small></div>
+          <div class="fr-btns">
+            <button class="chip-btn" data-req-accept="${escapeHtml(r.id)}">Принять</button>
+            <button class="chip-btn no" data-req-decline="${escapeHtml(r.id)}">Отклонить</button>
+          </div>
+        </div>`).join('');
+      // бейдж на кнопке «Найти друга»
+      const btn = $('friendFindBtn').querySelector('b');
+      btn.innerHTML = 'Найти друга' + (reqs.length ? '<span class="badge">' + reqs.length + '</span>' : '');
+    }
+
+    // ---------- Никнейм ----------
+    async function saveNickname() {
+      const inp = $('nickInput'), info = $('nickInfo'), btn = $('nickSave');
+      const nick = inp.value.trim();
+      const fail = (msg) => { info.textContent = msg; info.classList.add('nick-err'); inp.classList.add('bad'); };
+      inp.classList.remove('bad');
+      if (!myUid) { fail(fbFailed ? 'нет связи с сервером' : 'подключение… попробуйте через пару секунд'); return; }
+      if (!NICK_RE.test(nick)) { fail('3–20 символов: буквы, цифры, _ . -'); return; }
+      if (nick === S.nickname) { renderFriends(); return; }
+      btn.disabled = true; info.classList.remove('nick-err'); info.textContent = 'проверяем…';
+      try {
+        const snap = await FB.getDocs(FB.query(FB.collection(FB.db, 'users'), FB.where('nicknameLower', '==', nickKey(nick))));
+        if (snap.docs.some((d) => d.id !== myUid)) { fail('ник @' + nick + ' уже занят'); return; }
+        const t = today();
+        await FB.setDoc(userRef(myUid), {
+          uid: myUid, nickname: nick, nicknameLower: nickKey(nick),
+          totalSteps: S.total, todaySteps: t.steps, todayDate: dayKey(), friends: S.friends.slice()
+        }, { merge: true });
+        S.nickname = nick; cloudMe = Object.assign({}, cloudMe, { nickname: nick });
+        lastCloud = ''; save(true); inp.blur(); renderFriends(); refreshRating(true);
+        toast('✅', 'Ник сохранён', 'Друзья найдут вас по @' + nick);
+      } catch (e) {
+        console.warn('Firestore: ник', e); fail('не удалось сохранить — проверьте интернет');
+      } finally { btn.disabled = false; }
+    }
+    $('nickSave').addEventListener('click', saveNickname);
+    $('nickInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveNickname(); } });
+    $('nickInput').addEventListener('input', () => { $('nickInput').classList.remove('bad'); });
+
+    // ---------- Поиск и добавление ----------
+    function openFriendModal() {
+      $('friendNick').value = ''; $('friendNick').classList.remove('bad');
+      $('friendResult').innerHTML = (!S.nickname && myUid) ? '<div class="empty">Сначала задайте свой ник в настройках ниже — по нему друг увидит, от кого запрос.</div>' : '';
+      $('friendModal').classList.add('open');
+      setTimeout(() => $('friendNick').focus(), 350);
+    }
+    function closeFriendModal() { $('friendModal').classList.remove('open'); document.activeElement && document.activeElement.blur(); }
+    $('friendFindBtn').addEventListener('click', openFriendModal);
+    $('friendModal').addEventListener('click', (e) => { if (e.target.closest('[data-friend-close]')) closeFriendModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('friendModal').classList.contains('open')) closeFriendModal(); });
+
+    let foundUser = null;
+    function showResult(html) { $('friendResult').innerHTML = html; }
+    $('friendSearchForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nick = $('friendNick').value.trim();
+      foundUser = null;
+      if (!myUid) { showResult('<div class="empty">' + (fbFailed ? 'Нет связи с сервером' : 'Подключение… попробуйте ещё раз') + '</div>'); return; }
+      if (!nick) { $('friendNick').classList.add('bad'); return; }
+      $('friendNick').classList.remove('bad');
+      showResult('<div class="empty">Ищем…</div>');
+      try {
+        const snap = await FB.getDocs(FB.query(FB.collection(FB.db, 'users'), FB.where('nicknameLower', '==', nickKey(nick))));
+        if (snap.empty) { showResult('<div class="empty">Никого с ником @' + escapeHtml(nick) + ' не нашлось</div>'); return; }
+        const d = snap.docs[0], u = d.data();
+        foundUser = { uid: d.id, nickname: u.nickname || nick, totalSteps: u.totalSteps || 0 };
+        let action;
+        if (d.id === myUid) action = '<small class="rk-steps" style="color:var(--muted)">это вы</small>';
+        else if (S.friends.includes(d.id)) action = '<small class="rk-steps" style="color:var(--lime)">уже друг</small>';
+        else if (!S.nickname) action = '<small class="rk-steps" style="color:var(--muted);font-size:12px">задайте свой ник</small>';
+        else action = '<button class="chip-btn" id="friendAddBtn">Добавить</button>';
+        showResult(`<div class="fr-item">
+          <div class="fr-ava"><span>${escapeHtml(initial(foundUser.nickname))}</span></div>
+          <div class="fr-body"><b>@${escapeHtml(foundUser.nickname)}</b><small>${fmt(foundUser.totalSteps)} ${plural(foundUser.totalSteps, 'шаг', 'шага', 'шагов')} всего</small></div>
+          ${action}</div>`);
+      } catch (err) {
+        console.warn('Firestore: поиск', err); showResult('<div class="empty">Не удалось выполнить поиск — проверьте интернет</div>');
+      }
+    });
+    $('friendResult').addEventListener('click', async (e) => {
+      const btn = e.target.closest('#friendAddBtn');
+      if (!btn || !foundUser) return;
+      const target = foundUser;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        // встречный запрос от этого человека уже есть — просто принимаем его
+        const incoming = S.friendRequests.find((r) => r.from === target.uid);
+        if (incoming) { await acceptRequest(incoming); btn.textContent = 'Друзья ✓'; return; }
+        const reqs = FB.collection(FB.db, 'friendRequests');
+        const dup = await FB.getDocs(FB.query(reqs, FB.where('from', '==', myUid), FB.where('to', '==', target.uid)));
+        if (!dup.docs.some((d) => d.data().status === 'pending')) {
+          await FB.addDoc(reqs, { from: myUid, fromNick: S.nickname, to: target.uid, status: 'pending', createdAt: FB.serverTimestamp() });
+        }
+        btn.textContent = 'Отправлено ✓';
+        toast('📨', 'Запрос отправлен', '@' + target.nickname + ' увидит его в профиле');
+      } catch (err) {
+        console.warn('Firestore: запрос в друзья', err);
+        btn.disabled = false; btn.textContent = 'Добавить';
+        toast('⚠️', 'Не удалось отправить', 'Проверьте интернет и попробуйте ещё раз');
+      }
+    });
+
+    // ---------- Входящие запросы ----------
+    async function acceptRequest(r) {
+      if (!S.friends.includes(r.from)) S.friends.push(r.from);
+      S.friendRequests = S.friendRequests.filter((x) => x.id !== r.id);
+      save(true); renderFriends();
+      await Promise.all([
+        FB.updateDoc(userRef(r.from), { friends: FB.arrayUnion(myUid) }),
+        S.nickname ? FB.updateDoc(userRef(myUid), { friends: FB.arrayUnion(r.from) }) : Promise.resolve()
+      ]);
+      await FB.deleteDoc(FB.doc(FB.db, 'friendRequests', r.id));
+      toast('🤝', 'Новый друг', '@' + (r.fromNick || 'друг') + ' теперь в вашем рейтинге');
+      refreshRating(true);
+    }
+    $('reqList').addEventListener('click', async (e) => {
+      const acc = e.target.closest('[data-req-accept]'), dec = e.target.closest('[data-req-decline]');
+      const id = acc ? acc.dataset.reqAccept : dec ? dec.dataset.reqDecline : null;
+      const r = id && S.friendRequests.find((x) => x.id === id);
+      if (!r) return;
+      e.target.closest('.fr-btns').querySelectorAll('button').forEach((b) => { b.disabled = true; });
+      try {
+        if (acc) await acceptRequest(r);
+        else {
+          await FB.deleteDoc(FB.doc(FB.db, 'friendRequests', r.id));
+          S.friendRequests = S.friendRequests.filter((x) => x.id !== r.id); save(); renderFriends();
+        }
+      } catch (err) {
+        console.warn('Firestore: ответ на запрос', err);
+        toast('⚠️', 'Не получилось', 'Проверьте интернет и попробуйте ещё раз');
+        renderFriends();
+      }
+    });
+
+    // ---------- Рейтинг ----------
+    let rating = null, ratingAt = 0, ratingBusy = false;
+    async function refreshRating(force) {
+      if (!myUid || ratingBusy) { renderRating(); return; }
+      if (!force && Date.now() - ratingAt < 30000) { renderRating(); return; } // не чаще раза в 30 с
+      ratingBusy = true;
+      try {
+        const k = dayKey();
+        const rows = await Promise.all(S.friends.map((uid) => FB.getDoc(userRef(uid)).then((snap) => {
+          if (!snap.exists()) return null;
+          const u = snap.data();
+          return { uid, nickname: u.nickname || 'друг', steps: u.todayDate === k ? (u.todaySteps || 0) : 0 };
+        }).catch(() => null)));
+        rating = rows.filter(Boolean);
+        ratingAt = Date.now();
+      } finally { ratingBusy = false; }
+      renderRating();
+    }
+    function renderRating() {
+      const box = $('rankList');
+      if (fbFailed) { box.innerHTML = '<div class="empty">Нет связи с сервером — рейтинг недоступен</div>'; return; }
+      if (!myUid || !rating) { box.innerHTML = '<div class="empty">Загружаем рейтинг…</div>'; return; }
+      // себя берём из локальных данных — они свежее облака
+      const list = rating.filter((r) => r.uid !== myUid).concat({ uid: myUid, nickname: S.nickname || 'вы', steps: today().steps, me: true });
+      list.sort((a, b) => b.steps - a.steps || (a.me ? -1 : b.me ? 1 : 0));
+      const medal = ['🥇', '🥈', '🥉'];
+      box.innerHTML = list.map((r, i) => `
+        <div class="fr-item${r.me ? ' me' : ''}${i === 0 ? ' top1' : ''}">
+          <div class="rk-place">${list.length > 1 && i < 3 ? medal[i] : i + 1}</div>
+          <div class="fr-ava"><span>${escapeHtml(initial(r.nickname))}</span></div>
+          <div class="fr-body"><b>${r.me ? (S.nickname ? '@' + escapeHtml(S.nickname) : 'Вы') + ' <small>(вы)</small>' : '@' + escapeHtml(r.nickname)}</b></div>
+          <div class="rk-steps">${fmt(r.steps)}</div>
+        </div>`).join('') +
+        (list.length < 2 ? '<div class="empty">Добавьте друзей через «Найти друга», чтобы соревноваться</div>' : '');
+    }
+    $('rankRefresh').addEventListener('click', () => refreshRating(true));
+    $('friendRankBtn').addEventListener('click', () => {
+      refreshRating(true);
+      $('rankCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // ================================================================
     //  НАВИГАЦИЯ
     // ================================================================
-    const TABS = ['home', 'workout', 'ach', 'boss', 'profile'];
+    const TABS = ['home', 'workout', 'food', 'ach', 'boss', 'profile'];
     let currentTab = 'home';
 
     function switchTab(name) {
@@ -2505,9 +3612,10 @@
       document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
       $('navPill').style.transform = 'translateX(' + (TABS.indexOf(name) * 100) + '%)';
       if (name === 'ach') { renderAchievements(); S.seenAch = Object.keys(S.ach).length; save(); updateNavDot(); }
-      if (name === 'profile') { renderProfile(); renderShop(); renderSettings(); renderWaterWeek(); }
+      if (name === 'profile') { renderProfile(); renderShop(); renderSettings(); renderWaterWeek(); renderFriends(); refreshRating(); }
       if (name === 'home') { renderWeek(); renderPet(); renderQuests(); renderWater(); refreshMap(); }
       if (name === 'boss') renderBoss();
+      if (name === 'food') renderFood();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     $('nav').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) switchTab(b.dataset.tab); });
@@ -2530,13 +3638,14 @@
     function renderAll() {
       renderGreeting(); renderSettings(); renderCoins(); renderLive(); renderWeek();
       renderHistory(); renderAchievements(); renderProfile(); renderShop(); renderTracking(); updateNavDot();
-      renderCalibInfo(); renderRewards(); renderQuests(); renderWater(); renderPet(); renderBoss();
+      renderCalibInfo(); renderRewards(); renderQuests(); renderWater(); renderPet(); renderBoss(); renderFood(); renderStreak(); renderFriends(); renderRating();
     }
 
     // ================================================================
     //  СТАРТ
     // ================================================================
     renderAll();
+    checkStreak();
     initMap();
     initWeather();
     locateOnce();
