@@ -19,6 +19,8 @@
   <!-- Шрифты не блокируют первую отрисовку: display=swap + неблокирующая загрузка CSS -->
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet"></noscript>
+  <!-- Ключ Gemini для распознавания еды (window.STRIDE_GEMINI_KEY); без ключа — заглушка -->
+  <script src="config.js" onerror="console.warn('[Stride] config.js не найден — Gemini отключён, работает заглушка распознавания')"></script>
   <!-- Leaflet (мини-карта) подгружается динамически — см. секцию «МИНИ-КАРТА» -->
   <!-- Режим экономии и слабые устройства: классы на <html> ставятся до первой отрисовки -->
   <script>
@@ -35,7 +37,7 @@
        Модуль выполняется после основного скрипта, поэтому кладёт API в window.FB и сообщает событием 'fb-ready'. -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
-    import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+    import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, linkWithPopup } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
     import {
       getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc,
       query, where, onSnapshot, arrayUnion, arrayRemove, serverTimestamp, runTransaction, increment
@@ -56,6 +58,7 @@
     const db = getFirestore(app);
     window.FB = {
       auth, db, uid: null,
+      onAuthStateChanged, GoogleAuthProvider, linkWithPopup,
       collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc,
       query, where, onSnapshot, arrayUnion, arrayRemove, serverTimestamp, runTransaction, increment
     };
@@ -1524,6 +1527,17 @@
         </div>
       </div>
 
+      <!-- Блок входа через Google -->
+      <div class="glass card" id="authCard" style="display: none;">
+        <div class="card-title"><h2>Сохранение прогресса</h2><span>Войдите, чтобы не потерять данные</span></div>
+        <p style="font-size: 13px; color: var(--muted); margin-bottom: 12px;">Сейчас вы играете как гость. Привяжите аккаунт Google, чтобы ваш прогресс сохранился навсегда.</p>
+        <button class="btn-main" id="loginGoogle" style="background: #fff; color: #333; margin-top: 0; gap: 8px;">
+          <svg style="width:20px; height:20px;" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Войти через Google
+        </button>
+        <div id="authStatus" style="font-size: 12px; color: var(--muted); margin-top: 10px; text-align: center;"></div>
+      </div>
+
       <div class="social">
         <button class="glass" id="friendFindBtn">
           <div class="ico" style="background:rgba(34,227,255,.14);color:var(--cyan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg></div>
@@ -1903,12 +1917,16 @@
     // ================================================================
     const STORE_KEY = 'stride.v2';
     const STEP_LENGTH = 0.7; // метров на шаг
+    const WATER_GOAL = 8;
+    const WATER_BONUS = 15;
+    const waterCount = (mask) => { let n = 0; for (let i = 0; i < WATER_GOAL; i++) if (mask & (1 << i)) n++; return n; };
 
     function defaults() {
       return {
         name: '',
         coins: 0,
         total: 0,                    // шагов за всё время
+        bestDaySteps: 0,             // максимум шагов за один день — для достижения k10
         days: {},                    // { 'YYYY-MM-DD': { steps, active } }
         ach: {},                     // { id: timestamp }
         owned: ['f-none', 'b-none'],
@@ -2001,6 +2019,17 @@
       if (!s.pets.includes('chicken')) s.pets.unshift('chicken');
       if (!s.pets.includes(s.petType)) s.petType = 'chicken';
       ['workoutsDone', 'foodAdded'].forEach((k) => { if (!Number.isFinite(s[k]) || s[k] < 0) s[k] = 0; });
+      if (!Number.isFinite(s.bestDaySteps) || s.bestDaySteps < 0) s.bestDaySteps = 0;
+      // пересчитать из истории, если bestDaySteps меньше реального максимума
+      // (покрывает: пустое поле, битые данные, импорт копии с расхождением)
+      if (s.days && typeof s.days === 'object') {
+        let best = 0;
+        for (const d of Object.values(s.days)) {
+          const st = d && Number(d.steps);
+          if (Number.isFinite(st) && st > best) best = st;
+        }
+        if (best > s.bestDaySteps) s.bestDaySteps = best;
+      }
       s.cases = normalizeCases(saved && typeof saved === 'object' ? saved.cases : null);
       if (!s.casePending || typeof s.casePending !== 'object' || typeof s.casePending.reward !== 'string') s.casePending = null;
       return s;
@@ -2041,6 +2070,10 @@
     function dayKey(d = new Date()) {
       return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
+    function shiftDay(key, delta) {
+      const [y, m, d] = key.split('-').map(Number);
+      return dayKey(new Date(y, m - 1, d + delta));
+    }
     function today() {
       const k = dayKey();
       if (!S.days[k]) S.days[k] = { steps: 0, active: 0 };
@@ -2048,6 +2081,8 @@
     }
 
     const $ = (id) => document.getElementById(id);
+    const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    const escapeHtml = esc;
     const fmt = (n) => Math.round(n).toLocaleString('ru-RU');
     // ----- Режим экономии батареи: настройка устройства (не синхронизируется), класс html.lite ставится в <head> -----
     const LITE_KEY = 'stride.lite';
@@ -2070,6 +2105,8 @@
     let motionShownAt = 0;    // когда последний раз выводили магнитуду
     let listenerAdded = false;
     let activeTimer = null;
+    let motionCheckTimer = null; // проверка «Датчик не отвечает»
+    let calibTimeout = null;     // одноразовая страховка калибровки (см. doStartTracking)
     let wakeLock = null;
     let lastStepAt = 0;         // время последнего шага — для минут активности
 
@@ -2102,6 +2139,20 @@
     }
 
     function finishCalibration() {
+      clearTimeout(calibTimeout);
+      calibTimeout = null;
+      if (!calibN) { // нет замеров — деление на ноль; после 3 пустых попыток датчик считаем неработающим
+        calibTries++;
+        if (calibTries >= 3) {
+          calibrating = false;
+          calibTries = 0;
+          setStatus('Датчик движения не отвечает. Подсчёт шагов недоступен.', true);
+          if (isTracking) stopTracking();
+          return;
+        }
+        beginCalibration();
+        return;
+      }
       const base = calibSum / calibN;
       const std = Math.sqrt(Math.max(0, calibSq / calibN - base * base));
       // телефон двигался — повторяем (после 3 попыток принимаем как есть)
@@ -2143,6 +2194,7 @@
 
       // Считаем общую силу
       let magnitude = Math.sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z);
+      if (!Number.isFinite(magnitude)) return; // undefined-оси дают NaN и портят калибровку
       const now = Date.now();
 
       // Первые 2 секунды только собираем среднее, шаги не считаем
@@ -2198,6 +2250,7 @@
       const d = today();
       d.steps++;
       S.total++;
+      if (d.steps > S.bestDaySteps) S.bestDaySteps = d.steps;
       lastStepAt = Date.now();
       if (S.activeWorkout && !S.activeWorkout.pausedAt) S.activeWorkout.steps++;
       save();
@@ -2219,11 +2272,6 @@
         });
       }
       return Promise.resolve();
-    }
-
-    async function enableSensor() {
-      await requestMotion();
-      if (!listenerAdded) { window.addEventListener('devicemotion', handleMotion); listenerAdded = true; }
     }
 
     // Параллельные вызовы (двойной тап, тренировка + главная) получают один и тот же промис,
@@ -2255,9 +2303,22 @@
       // не даём экрану погаснуть — иначе датчики засыпают (в режиме экономии экран может гаснуть)
       requestWakeLock();
 
-      setTimeout(() => {
+      clearTimeout(motionCheckTimer);
+      motionCheckTimer = setTimeout(() => {
+        motionCheckTimer = null;
         if (isTracking && !motionSeen) setStatus('Датчик движения не отвечает. Откройте приложение на телефоне с акселерометром.', true);
       }, 3000);
+      // одноразовая страховка: калибровка не должна висеть бесконечно
+      clearTimeout(calibTimeout);
+      calibTimeout = setTimeout(() => {
+        calibTimeout = null;
+        if (!isTracking || !calibrating) return;
+        if (calibN >= 10) { finishCalibration(); return; }
+        calibrating = false;
+        calibTries = 0;
+        setStatus('Датчик не отвечает — шаги не считаются', true);
+        stopTracking();
+      }, 8000);
 
       startRoute();
       renderTracking();
@@ -2269,6 +2330,8 @@
       calibrating = false; // незавершённая калибровка не сохраняется
       stopRoute();
       clearInterval(activeTimer); activeTimer = null;
+      clearTimeout(motionCheckTimer); motionCheckTimer = null;
+      clearTimeout(calibTimeout); calibTimeout = null;
       releaseWakeLock();
       save(true);
       renderTracking();
@@ -2285,7 +2348,8 @@
     }
     function releaseWakeLock() { if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } }
 
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) requestWakeLock(); });
+    // скрыли вкладку — снимаем блокировку явно, вернулись — запрашиваем заново
+    document.addEventListener('visibilitychange', () => { if (document.hidden) releaseWakeLock(); else requestWakeLock(); });
 
     // ================================================================
     //  ГЛАВНАЯ
@@ -2313,7 +2377,7 @@
     }
 
     // Ссылки на узлы главной кешируются: renderLive() вызывается на каждый шаг
-    const liveEls = { ring: $('ring'), bar: $('barFill'), pct: $('pctTxt'), km: $('kmTxt'), kcal: $('kcalTxt'), min: $('minTxt') };
+    const liveEls = { ring: $('ring'), bar: $('barFill'), pct: $('pctTxt'), km: $('kmTxt'), kcal: $('kcalTxt'), min: $('minTxt'), lastQuest: 0, questTimer: null };
     // Пишем в DOM только изменившиеся значения — лишние записи стоят перерисовки на слабых телефонах
     function setText(el, v) { if (el.textContent !== v) el.textContent = v; }
     function setStyle(el, prop, v) { if (el.style[prop] !== v) el.style[prop] = v; }
@@ -2330,7 +2394,12 @@
       setText(liveEls.kcal, fmt(kcalFor(d.steps)));
       setText(liveEls.min, String(Math.floor(d.active)));
       renderWorkoutLive();
-      renderQuests();
+      if (bump && (!liveEls.lastQuest || Date.now() - liveEls.lastQuest > 2000)) {
+        liveEls.lastQuest = Date.now();
+        renderQuests();
+      } else if (bump && !liveEls.questTimer) { // хвостовой вызов: последний шаг серии тоже попадёт в квесты
+        liveEls.questTimer = setTimeout(() => { liveEls.questTimer = null; liveEls.lastQuest = Date.now(); renderQuests(); }, 2000);
+      }
       if (bump && Math.random() < .05) renderWeek(); // недорогое периодическое обновление графика
     }
 
@@ -2516,7 +2585,7 @@
       { id: 'first', icon: '👣', title: 'Первый шаг', desc: 'Сделайте свой первый шаг', coins: 10, prog: () => [S.total, 1] },
       { id: 'k1', icon: '🚀', title: '1 000 шагов', desc: 'Пройдите 1 000 шагов всего', coins: 50, prog: () => [S.total, 1000] },
       { id: 'k5', icon: '⚡', title: '5 000 шагов', desc: 'Пройдите 5 000 шагов всего', coins: 150, prog: () => [S.total, 5000] },
-      { id: 'k10', icon: '👑', title: '10 000 шагов', desc: 'Пройдите 10 000 шагов за один день', coins: 300, prog: () => [Math.max(0, ...Object.values(S.days).map((d) => d.steps)), 10000] },
+      { id: 'k10', icon: '👑', title: '10 000 шагов', desc: 'Пройдите 10 000 шагов за один день', coins: 300, prog: () => [S.bestDaySteps || 0, 10000] },
       { id: 'work', icon: '🔥', title: 'Атлет', desc: 'Завершите первую тренировку', coins: 100, prog: () => [S.workouts.length, 1] },
       { id: 'marathon', icon: '🏃', title: 'Марафонец', desc: 'Пройдите 50 000 шагов за всё время', coins: 500, prog: () => [S.total, 50000] },
       { id: 'sport', icon: '🏋️', title: 'Спортсмен', desc: 'Завершите 10 тренировок', coins: 300, prog: () => [Math.max(S.workoutsDone || 0, S.workouts.length), 10] },
@@ -2797,7 +2866,7 @@
     // Сброс только шагов: имя, скины, босс, питомец, вода, маршруты и настройки остаются
     function resetSteps() {
       if (isTracking) stopTracking();
-      const keep = ['name', 'owned', 'frame', 'bg', 'font', 'boss', 'pet', 'goal', 'height', 'weight', 'mute', 'waterHist', 'routes', 'sex', 'age', 'foodGoal', 'foodDays', 'petType', 'pets', 'petStates', 'promoOpened', 'foodAdded'];
+      const keep = ['name', 'owned', 'frame', 'bg', 'font', 'boss', 'pet', 'goal', 'height', 'weight', 'mute', 'waterHist', 'routes', 'sex', 'age', 'foodGoal', 'foodDays', 'petType', 'pets', 'petStates', 'promoOpened', 'foodAdded', 'casePending', 'caseKeys', 'bestDaySteps'];
       const fresh = defaults();
       keep.forEach((k) => { fresh[k] = S[k]; });
       if (S.daily && S.daily.day === dayKey()) {
@@ -2814,8 +2883,15 @@
     // Полный сброс: всё приложение, включая кейс, колесо и калибровку
     function resetAll() {
       if (isTracking) stopTracking();
-      try { [STORE_KEY, CALIB_KEY, CASE_KEY, SPIN_KEY, WEATHER_KEY].forEach((k) => localStorage.removeItem(k)); } catch (e) {}
+      try {
+        [STORE_KEY, CALIB_KEY, CASE_KEY, SPIN_KEY, WEATHER_KEY, 'stride.banned', 'stride.weak'].forEach((k) => localStorage.removeItem(k));
+      } catch (e) {}
+      isBanned = false;
+      document.body.classList.remove('is-banned');
+      const banEl = $('banScreen');
+      if (banEl) banEl.hidden = true;
       calib = null;
+      setLiteMode(false);
       S = defaults(); lastStreakDay = null; save(true); renderAll(); runWorkoutUI(); clearMapRoutes();
       toast('🧹', 'Данные сброшены', 'Начинаем с чистого листа');
     }
@@ -3254,7 +3330,9 @@
       const list = roll.list, useKey = caseKeys(c.id) > 0;
       if (!useKey && S.coins < c.price) { toast('🪙', 'Не хватает монет', 'Нужно ещё ' + fmt(c.price - S.coins) + ' — открывайте достижения!'); return; }
       const sound = soundOn() && audioUnlock();   // будим Web Audio прямо в обработчике нажатия (iOS)
-      const prize = list[pickIndex(list)];
+      const prize = list && list.length ? list[pickIndex(list)] : null;
+      if (!prize) { toast('⚠️', 'Кейс пуст', 'В кейсе нет наград'); return; } // иначе rewardToken упадёт и окно «зависнет» в прокрутке
+      if (S.casePending) recoverCasePending();     // незабранный выигрыш не затираем новым
       roll.spinning = true;
       renderRollUI();                              // кнопки блокируются сразу — без спама
       // Оплата и выигрыш фиксируются одной записью до анимации: если приложение закроют посреди
@@ -3285,9 +3363,10 @@
 
       const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
       const ticks = sound && !calm ? tickTimes(m, tx0, tx1, items.length) : [];
-      if (sound) { try { soundBuffer('tick'); soundBuffer(RARITY_SOUNDS[prize.rarity]); } catch (e) {} } // синтез — до анимации
+      if (sound) { try { soundBuffer('tick'); soundBuffer(RARITY_SOUNDS[prize.rarity]); soundBuffer('case_open'); } catch (e) {} } // синтез — до анимации
       requestAnimationFrame(() => {
         if (!roll || !roll.spinning) return;
+        if (sound) { try { playBuffer('case_open', 0, 1, .6); } catch (e) {} }
         strip.classList.add('spin');
         setStripX(tx1);
         try { roll.ticks = ticks.map((t) => playBuffer('tick', t / 1000, .94 + Math.random() * .12, .55)); } catch (e) {}
@@ -3556,7 +3635,10 @@
         actions: [{ label: 'Отмена', ghost: true }, { label: 'Сбросить', danger: true, onClick: () => { S.cases = defaultCases(); saveCases(); toast('♻️', 'Кейсы сброшены', '10 стандартных кейсов'); } }]
       });
     });
-    setInterval(() => { if (!document.hidden) renderRewards(); }, 1000);
+    setInterval(() => {
+      if (document.hidden) return;
+      if (currentTab === 'home' || currentTab === 'ach' || $('wheelModal').classList.contains('open')) renderRewards();
+    }, 1000);
 
     // ================================================================
     //  ДЕНЬ: КВЕСТЫ, ВОДА (сброс по смене dayKey())
@@ -3639,9 +3721,6 @@
     $('questList').addEventListener('click', (e) => { const b = e.target.closest('[data-claim]'); if (b) claimQuest(b.dataset.claim); });
 
     // ----- Трекер воды -----
-    const WATER_GOAL = 8;
-    const WATER_BONUS = 15;
-    const waterCount = (mask) => { let n = 0; for (let i = 0; i < WATER_GOAL; i++) if (mask & (1 << i)) n++; return n; };
 
     // История воды за 7 дней: { 'YYYY-MM-DD': стаканов }, старые дни удаляются
     function syncWaterHist() {
@@ -3717,7 +3796,8 @@
         if (!raw) S[key] = null;
         else if (!Number.isFinite(v) || v < min || v > max) { toast('⚠️', 'Проверьте ' + label, 'Допустимо от ' + min + ' до ' + max); renderSettings(); return; }
         else S[key] = key === 'age' ? Math.round(v) : Math.round(v * 10) / 10;
-        save(true); renderSettings(); renderLive(); renderFood();
+        save(true); renderSettings(); renderLive();
+        if (currentTab === 'food') renderFood();
       });
       $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
     }
@@ -3727,7 +3807,8 @@
     $('sexSeg').addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b) return;
       S.sex = S.sex === b.dataset.sex ? null : b.dataset.sex; // повторное нажатие снимает выбор
-      save(true); renderSettings(); renderFood();
+      save(true); renderSettings();
+      if (currentTab === 'food') renderFood();
     });
 
     function exportCsv() {
@@ -3837,10 +3918,6 @@
     const STREAK_BONUS = 50;        // …+50 монет
     let lastStreakDay = null;       // день, за который цель уже засчитана в этой сессии — быстрый выход в addStep
 
-    function shiftDay(key, delta) {
-      const d = new Date(key + 'T12:00:00'); d.setDate(d.getDate() + delta);
-      return dayKey(d);
-    }
     // Актуальное значение: если последний выполненный день старше вчерашнего, серия прервана
     function streakCount() {
       const st = S.streak, k = dayKey();
@@ -4002,6 +4079,9 @@
 
     function bossHit() {
       const b = S.boss;
+      // битые данные (NaN/строка) — босс никогда не дошёл бы до 0 HP
+      if (!(Number.isInteger(b.level) && b.level >= 1)) b.level = 1;
+      if (!Number.isFinite(b.hp) || b.hp > bossMaxHp(b.level)) b.hp = bossMaxHp(b.level);
       b.hp = Math.max(0, b.hp - 1);
       daily().bossDmg++; // урон за сегодня — для квеста
       if (b.hp === 0) {
@@ -4260,6 +4340,7 @@
     // Геолокация запрещена: вместо карты (или пустого блока) — понятная заглушка. Разрешили — карта возвращается.
     function showMapDenied() {
       const el = $('liveMap'), stub = $('mapDenied');
+      if (!el) return;
       if (!geoDenied) {
         if (stub) { stub.remove(); el.style.display = ''; refreshMap(); }
         return;
@@ -4409,7 +4490,12 @@
       try {
         const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(3) + '&longitude=' + lon.toFixed(3) +
           '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day&wind_speed_unit=ms&timezone=auto';
-        const res = await fetch(url);
+        // без таймаута fetch на «мёртвой» сети висит минутами и карточка остаётся в loading
+        const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+        const abortTimer = ctrl ? setTimeout(() => ctrl.abort(), 10000) : 0;
+        let res;
+        try { res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined); }
+        finally { clearTimeout(abortTimer); }
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const c = (await res.json()).current;
         const w = { temp: c.temperature_2m, feels: c.apparent_temperature, code: c.weather_code, wind: c.wind_speed_10m, day: c.is_day, lat, lon, at: Date.now() };
@@ -4434,13 +4520,7 @@
     const DEFAULT_KCAL = 2000;
     const MACRO_SPLIT = { protein: [0.25, 4], fat: [0.3, 9], carbs: [0.45, 4] }; // доля калорий, ккал на грамм
     let foodDay = null; // просматриваемый день; null — сегодня
-    const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
     const num1 = (n) => (Math.round(n * 10) / 10).toLocaleString('ru-RU');
-
-    function shiftDay(key, delta) {
-      const [y, m, d] = key.split('-').map(Number);
-      return dayKey(new Date(y, m - 1, d + delta));
-    }
     // Коэффициент активности — по среднему числу шагов за прошлые 7 дней
     function activityLevel() {
       let sum = 0, k = dayKey();
@@ -4569,8 +4649,8 @@
       const where = foodDay ? 'за ' + new Date(foodDay + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : 'за сегодня';
       $('foodModalTitle').textContent = data ? 'Проверьте блюдо' : 'Добавить еду';
       $('foodModalNote').textContent = data ? 'Распознано нейросетью — поправьте, если что-то не так. Запись попадёт в дневник ' + where : 'Запись попадёт в дневник ' + where;
-      $('fPhoto').classList.toggle('show', !!(data && photo));
-      if (data && photo) $('fPhoto').src = photo; else $('fPhoto').removeAttribute('src');
+      $('fPhoto').classList.toggle('show', !!photo);
+      if (photo) $('fPhoto').src = photo; else $('fPhoto').removeAttribute('src');
       $('foodModal').classList.add('open');
       if (!data) setTimeout(() => $('fName').focus(), 350);
     }
@@ -4587,7 +4667,7 @@
     });
 
     // ================================================================
-    //  РАСПОЗНАВАНИЕ ЕДЫ ПО ФОТО (камера + заглушка нейросети)
+    //  РАСПОЗНАВАНИЕ ЕДЫ ПО ФОТО (камера + Gemini API)
     // ================================================================
     const MOCK_DISHES = [
       { name: 'Гречка с курицей', kcal: 350, protein: 30, fat: 10, carbs: 40 },
@@ -4605,11 +4685,123 @@
     let camSession = 0;      // растёт при каждом открытии/закрытии — отсекает устаревшие ответы
     let foodPhoto = null;    // последний снимок (Base64, data URL)
 
-    // Заглушка API: через 2 секунды возвращает случайное блюдо
-    function mockRecognizeFood(photoBase64) {
-      return new Promise((resolve) => {
-        setTimeout(() => resolve({ ...MOCK_DISHES[Math.floor(Math.random() * MOCK_DISHES.length)] }), 2000);
-      });
+    // Запасной вариант без ключа Gemini: случайное блюдо (старое поведение заглушки)
+    function fallbackDish() {
+      return { ...MOCK_DISHES[Math.floor(Math.random() * MOCK_DISHES.length)] };
+    }
+
+    const GEMINI_PROMPT =
+      'Ты — нутрициолог. Проанализируй фото блюда. Верни СТРОГО JSON без markdown, без пояснений, без ```json, только объект с полями: ' +
+      '{"name": "краткое название блюда на русском", "kcal": число, "protein": число, "fat": число, "carbs": число}. ' +
+      'Оценивай порцию по размеру тарелки/приборов на фото. Если на фото несколько блюд — выбери главное. ' +
+      'Если блюдо русское/постсоветское (борщ, гречка, оливье, пельмени, плов, сырники и т.п.) — используй типичные для него КБЖУ на порцию 250–350 г. ' +
+      'Если видишь упаковку с читаемым названием/брендом — используй данные с упаковки. ' +
+      'Если на фото не еда — верни {"error": "not_food"}. ' +
+      'Все числа — целые (ккал) или с одним знаком после запятой (БЖУ в граммах).';
+
+    // Распознавание блюда через Gemini API. Ключ — window.STRIDE_GEMINI_KEY из config.js;
+    // без ключа работает как прежняя заглушка. Ошибки: BAD_PHOTO, NOT_FOOD (err.code), GEMINI_*, AbortError (таймаут)
+    async function recognizeFood(photoBase64) {
+      if (!photoBase64 || typeof photoBase64 !== 'string' || !photoBase64.startsWith('data:image/')) {
+        throw new Error('BAD_PHOTO');
+      }
+      const key = window.STRIDE_GEMINI_KEY;
+      if (!key) {
+        console.warn('[Stride] Gemini API key не задан — используется заглушка');
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        return fallbackDish();
+      }
+      // photoBase64 — data:image/jpeg;base64,... ; Gemini ждёт чистый base64 без префикса
+      const m = /^data:(image\/[a-z+.-]+);base64,/i.exec(photoBase64);
+      const mime = m ? m[1].toLowerCase() : 'image/jpeg';
+      const base64 = m ? photoBase64.slice(m[0].length) : photoBase64.slice(photoBase64.indexOf(',') + 1);
+      const model = window.STRIDE_GEMINI_MODEL || 'gemini-flash-latest';
+
+      const body = {
+        contents: [{
+          parts: [
+            { text: GEMINI_PROMPT },
+            { inline_data: { mime_type: mime, data: base64 } }
+          ]
+        }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'object',
+            properties: {
+              name:    { type: 'string' },
+              kcal:    { type: 'number' },
+              protein: { type: 'number' },
+              fat:     { type: 'number' },
+              carbs:   { type: 'number' },
+              error:   { type: 'string' }
+            }
+          },
+          temperature: 0.2
+        }
+      };
+
+      const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), 20000) : 0;
+      let res, json;
+      try {
+        try {
+          res = await fetch(
+            'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
+            {
+              method: 'POST',
+              // ключ в заголовке, а не в URL — не попадает в логи запросов и ошибки fetch
+              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+              body: JSON.stringify(body),
+              signal: ctrl ? ctrl.signal : undefined
+            }
+          );
+        } catch (e) {
+          if (e && e.name === 'AbortError') throw e;
+          throw new Error('GEMINI_NETWORK'); // нет сети / CORS
+        }
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '');
+          console.warn('[Stride] Gemini HTTP', res.status, errText.slice(0, 300));
+          throw new Error('GEMINI_HTTP_' + res.status);
+        }
+        json = await res.json().catch(() => null);
+      } finally {
+        clearTimeout(timer);
+      }
+
+      // Текст ответа: candidates[0].content.parts[0].text
+      const cand = json && json.candidates && json.candidates[0];
+      const parts = cand && cand.content && cand.content.parts;
+      const text = parts && parts[0] && parts[0].text;
+      if (!text) throw new Error('GEMINI_EMPTY');
+
+      let parsed;
+      try { parsed = JSON.parse(String(text).replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, '')); }
+      catch (e) { throw new Error('GEMINI_BAD_JSON'); }
+      if (!parsed || typeof parsed !== 'object') throw new Error('GEMINI_BAD_JSON');
+
+      if (parsed.error === 'not_food') {
+        const err = new Error('NOT_FOOD');
+        err.code = 'NOT_FOOD';
+        throw err;
+      }
+
+      // Валидация и нормализация
+      const name = String(parsed.name || 'Блюдо').trim().slice(0, 60) || 'Блюдо';
+      const num = (v, min, max, fallback) => {
+        const n = Number(v);
+        if (!Number.isFinite(n) || n < min || n > max) return fallback;
+        return Math.round(n * 10) / 10;
+      };
+      const kcal    = Math.round(num(parsed.kcal, 0, 5000, 0));
+      const protein = num(parsed.protein, 0, 500, 0);
+      const fat     = num(parsed.fat, 0, 500, 0);
+      const carbs   = num(parsed.carbs, 0, 500, 0);
+
+      if (!kcal) throw new Error('GEMINI_ZERO_KCAL');
+
+      return { name, kcal, protein, fat, carbs };
     }
 
     function stopCamera() {
@@ -4679,13 +4871,32 @@
       setCamState('busy');
       const session = camSession;
       try {
-        const dish = await mockRecognizeFood(foodPhoto);
+        const dish = await recognizeFood(foodPhoto);
         if (session !== camSession) return; // пользователь закрыл окно во время анализа
         const photo = foodPhoto;
         closeCamera();
         openFoodModal(dish, photo);
       } catch (err) {
-        if (session === camSession) setCamState('err', 'Не удалось распознать блюдо. Попробуйте ещё раз или введите данные вручную.');
+        if (session !== camSession) return;
+        // сырой текст ошибки API в интерфейс не выводим
+        const msg = err && err.message ? String(err.message) : '';
+        const isGemini = msg.startsWith('GEMINI_') || (err && err.name === 'AbortError');
+        if (err && err.code === 'NOT_FOOD') {
+          const photo = foodPhoto;
+          closeCamera();
+          openFoodModal(null, photo);
+          toast('🤔', 'Не похоже на еду', 'Введите блюдо вручную — или попробуйте другой снимок');
+        } else if (msg === 'GEMINI_ZERO_KCAL') {
+          // модель не смогла оценить калории (вода, чай, пустая тарелка) — не пугаем экраном ошибки
+          const photo = foodPhoto;
+          closeCamera();
+          openFoodModal(null, photo);
+          toast('🤔', 'Не удалось оценить калории', 'Введите блюдо и КБЖУ вручную');
+        } else if (isGemini) {
+          setCamState('err', 'Не удалось распознать блюдо. Проверьте интернет и попробуйте ещё раз.');
+        } else {
+          setCamState('err', 'Не удалось распознать блюдо. Попробуйте ещё раз или введите данные вручную.');
+        }
       }
     }
 
@@ -4740,10 +4951,8 @@
     const CLOUD_DELAY = 8000;     // дебаунс записи шагов в Firestore
     const CLOUD_MAX_WAIT = 60000; // при непрерывной ходьбе — не реже раза в минуту
     const NICK_RE = /^[a-zA-Z0-9_]{3,20}$/;  // только латиница, цифры и «_», без пробелов
-    const ADMIN_NICK = 'admin';
     const nickKey = (n) => String(n || '').trim().replace(/^@/, '').toLowerCase();
     const nickRef = (nick) => FB.doc(FB.db, 'nicknames', nickKey(nick));
-    const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const initial = (n) => (String(n || '?').trim()[0] || '?').toUpperCase();
     const userRef = (uid) => FB.doc(FB.db, 'users', uid);
 
@@ -4773,7 +4982,13 @@
       const nick = cloudMe ? cloudMe.nickname || null : null;
       if (S.nickname !== nick) { S.nickname = nick; changed = true; }
       if (cloudMe && Array.isArray(cloudMe.friends)) {
-        cloudMe.friends.forEach((uid) => { if (uid && uid !== myUid && !S.friends.includes(uid)) { S.friends.push(uid); changed = true; } });
+        const cloudFriends = cloudMe.friends.filter((uid) => uid && uid !== myUid);
+        const cloudSet = new Set(cloudFriends);
+        // добавить недостающих
+        cloudFriends.forEach((uid) => { if (!S.friends.includes(uid)) { S.friends.push(uid); changed = true; } });
+        // убрать тех, кого нет в облаке (разорванная дружба)
+        const filtered = S.friends.filter((uid) => cloudSet.has(uid));
+        if (filtered.length !== S.friends.length) { S.friends = filtered; changed = true; }
       }
       return changed;
     }
@@ -5016,7 +5231,7 @@
     // клиент получателя применяет их к S и обнуляет поля в своём документе
     let giftBusy = false;
     async function claimAdminGifts() {
-      if (!cloudMe || giftBusy || isBanned) return;
+      if (!cloudMe || typeof cloudMe !== 'object' || !myUid || !window.FB || giftBusy || isBanned) return;
       const coins = Math.trunc(Number(cloudMe.giftCoins) || 0);
       const steps = Math.trunc(Number(cloudMe.giftSteps) || 0);
       const gifts = Array.isArray(cloudMe.giftItems) ? cloudMe.giftItems : [];
@@ -5031,17 +5246,18 @@
         if (items.length || caseGifts.length) upd.giftItems = FB.arrayRemove(...items, ...caseGifts);
         await FB.updateDoc(userRef(myUid), upd);
         if (coins) {
-          S.coins = Math.max(0, S.coins + coins);
+          S.coins = Math.max(0, (Number(S.coins) || 0) + coins);
           toast(coins > 0 ? '🎁' : '🪙', coins > 0 ? 'Подарок: +' + fmt(coins) + ' монет' : 'Списано ' + fmt(-coins) + ' монет', 'Решение администрации');
         }
         if (steps) {
           const d = today();
-          d.steps = Math.max(0, d.steps + steps);
-          S.total = Math.max(0, S.total + steps);
+          d.steps = Math.max(0, (Number(d.steps) || 0) + steps);
+          S.total = Math.max(0, (Number(S.total) || 0) + steps);
           toast(steps > 0 ? '⚡' : '👟', steps > 0 ? 'Подарок: +' + fmt(steps) + ' шагов' : 'Списано ' + fmt(-steps) + ' шагов', 'Решение администрации');
         }
         items.forEach((id) => {
           const it = findItem(id);
+          if (!it) return;
           grantItem(it);
           toast('👑', 'Лимитированный скин: ' + it.name, 'Выдан администрацией и уже надет');
         });
@@ -5067,11 +5283,14 @@
       if (v === isBanned) return;
       isBanned = v;
       document.body.classList.toggle('is-banned', v);
-      $('banScreen').hidden = !v;
+      const ban = $('banScreen');
+      if (ban) ban.hidden = !v;
       if (v) {
         if (isTracking) stopTracking();
-        ['modal', 'friendModal', 'wheelModal', 'foodModal', 'admUserModal'].forEach((id) => $(id).classList.remove('open'));
+        if (camStream) closeCamera(); // камера под заглушкой продолжала бы работать
+        ['modal', 'friendModal', 'caseModal', 'wheelModal', 'foodModal', 'admUserModal'].forEach((id) => { const m = $(id); if (m) m.classList.remove('open'); });
         document.activeElement && document.activeElement.blur();
+        clearTimeout(cloudTimer); cloudTimer = null; cloudFirstPending = 0;
       }
     }
     // пока бан активен, любые клики, ввод и отправка форм вне заглушки блокируются
@@ -5083,12 +5302,11 @@
     //  АДМИН-ПАНЕЛЬ
     //  Доступ: только мой Firebase uid (MY_ADMIN_UID), ник роли не играет
     // ================================================================
-    let isAdmin = false, adminCheckFor = null;
+    let isAdmin = false;
     let adminUsers = [];          // последний загруженный список пользователей
     let managed = null;           // пользователь, открытый в окне «Управление»
     const MY_ADMIN_UID = 'aosozibl8wUZKDvQoefWanvelSS2';
     async function checkAdmin() {
-      adminCheckFor = myUid || null;
       setAdmin(!!myUid && myUid === MY_ADMIN_UID);
     }
     function setAdmin(v) {
@@ -5187,6 +5405,7 @@
       const b = e.target.closest('[data-adm]');
       if (!b || !managed || !isAdmin) return;
       const act = b.dataset.adm, u = managed, self = u.uid === myUid;
+      const prev = { coins: u.coins || 0, totalSteps: u.totalSteps || 0, banned: !!u.banned }; // откат, если запись не прошла
       let upd = null, apply = null, done = '';
       if (act === 'coins+' || act === 'coins-' || act === 'steps+' || act === 'steps-') {
         const isCoins = act.startsWith('coins'), inp = $(isCoins ? 'admCoinAmt' : 'admStepAmt');
@@ -5197,12 +5416,12 @@
         const delta = act.endsWith('+') ? n : -n;
         if (isCoins) {
           upd = { coins: FB.increment(delta), giftCoins: FB.increment(delta) };
-          apply = () => { S.coins = Math.max(0, S.coins + delta); renderCoins(true); renderShop(); };
+          apply = () => { S.coins = Math.max(0, (Number(S.coins) || 0) + delta); renderCoins(true); renderShop(); };
           u.coins = Math.max(0, (u.coins || 0) + delta);
           done = (delta > 0 ? 'Выдано ' : 'Забрано ') + fmt(n) + ' монет';
         } else {
           upd = { totalSteps: FB.increment(delta), giftSteps: FB.increment(delta) };
-          apply = () => { const d = today(); d.steps = Math.max(0, d.steps + delta); S.total = Math.max(0, S.total + delta); renderLive(true); renderWeek(); renderProfile(); checkStreak(); checkAchievements(); };
+          apply = () => { const d = today(); d.steps = Math.max(0, (Number(d.steps) || 0) + delta); S.total = Math.max(0, (Number(S.total) || 0) + delta); renderLive(true); renderWeek(); renderProfile(); checkStreak(); checkAchievements(); };
           u.totalSteps = Math.max(0, (u.totalSteps || 0) + delta);
           done = (delta > 0 ? 'Выдано ' : 'Забрано ') + fmt(n) + ' шагов';
         }
@@ -5240,6 +5459,7 @@
         loadAdminUsers();
       } catch (err) {
         console.warn('Firestore: управление пользователем', err);
+        Object.assign(u, prev);
         admUserNote(err && err.code === 'permission-denied' ? 'Нет прав — проверьте правила Firestore' : 'Не удалось сохранить — проверьте интернет', true);
       } finally { b.disabled = false; if (managed === u) renderManaged(); }
     });
@@ -5307,7 +5527,8 @@
     function renderAll() {
       renderGreeting(); renderSettings(); renderCoins(); renderLive(); renderWeek();
       renderHistory(); renderAchievements(); renderProfile(); renderShop(); renderTracking(); updateNavDot();
-      renderCalibInfo(); renderRewards(); renderCases(); recoverCasePending(); renderQuests(); renderWater(); renderPet(); renderBoss(); renderFood(); renderStreak(); renderFriends(); renderRating();
+      renderCalibInfo(); renderRewards(); renderCases(); recoverCasePending(); renderQuests(); renderWater(); renderPet(); renderBoss(); renderStreak(); renderFriends(); renderRating();
+      if (currentTab === 'food') renderFood();
     }
 
     // ================================================================
@@ -5347,14 +5568,87 @@
         prev = t; n++;
         if (t - first < 3000) { requestAnimationFrame(step); return; }
         if ((t - first) / n > 24 || janks >= 8) {
-   document.documentElement.classList.add('weak'); // ОТКЛЮЧЕНО ДЛЯ ТЕСТА АНИМАЦИИ
-   try { localStorage.setItem('stride.weak', String(Date.now())); } catch (e) {}
+          document.documentElement.classList.add('weak');
+          try { localStorage.setItem('stride.weak', String(Date.now())); } catch (e) {}
         }
       };
       requestAnimationFrame(step);
     }
-    document.getElementById('splash').style.opacity = '0'; setTimeout(() => document.getElementById('splash').remove(), 300);
+    const splash = document.getElementById('splash');
+    if (splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 300); }
     setTimeout(probeSmoothness, 1500); // первые кадры после загрузки — шрифты и Firebase, их не считаем
+
+    // ================================================================
+    //  ВХОД ЧЕРЕЗ GOOGLE (Привязка аккаунта)
+    // ================================================================
+    // Функции Firebase Auth импортированы в модуле — здесь берём их из window.FB
+    let googleAuthReady = false;
+    function setupGoogleAuth() {
+      if (googleAuthReady) return;
+      const authCard = $('authCard');
+      const loginBtn = $('loginGoogle');
+      const statusEl = $('authStatus');
+      if (!authCard || !loginBtn || !window.FB || !FB.onAuthStateChanged) return;
+      googleAuthReady = true;
+
+      // Слушаем состояние авторизации
+      FB.onAuthStateChanged(FB.auth, (user) => {
+        if (user && !user.isAnonymous) {
+          authCard.style.display = 'none'; // Скрываем, если вошли через Google
+        } else {
+          authCard.style.display = 'block'; // Показываем гостям
+        }
+      });
+
+      // Обработчик нажатия на кнопку
+      const say = (t) => { if (statusEl) statusEl.textContent = t; };
+      loginBtn.addEventListener('click', async () => {
+        if (loginBtn.disabled) return; // двойной клик — второй попап не открываем
+        const user = FB.auth && FB.auth.currentUser;
+        if (!user) { say('Нет связи с сервером входа. Проверьте интернет и перезапустите приложение.'); return; }
+        loginBtn.disabled = true;
+        const provider = new FB.GoogleAuthProvider();
+        try {
+          say('Подключение к Google...');
+          // Привязываем текущий анонимный аккаунт к Google
+          const result = await FB.linkWithPopup(user, provider);
+          const gUser = (result && result.user) || {};
+          say('');
+          toast('✅', 'Аккаунт сохранен!', 'Прогресс привязан к ' + (gUser.displayName || gUser.email || 'Google'));
+          authCard.style.display = 'none';
+
+          // Если у пользователя не было имени, берем его из Google
+          if (!S.name && gUser.displayName) {
+            S.name = gUser.displayName;
+            save(true);
+            renderProfile();
+            renderGreeting();
+          }
+        } catch (error) {
+          console.error(error);
+          const code = error && error.code;
+          if (code === 'auth/credential-already-in-use') {
+            say('Этот Google-аккаунт уже привязан к другому профилю.');
+          } else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+            say('Окно входа закрыто.');
+          } else if (code === 'auth/popup-blocked') {
+            say('Браузер заблокировал окно входа. Разрешите всплывающие окна.');
+          } else {
+            say('Ошибка входа. Попробуйте еще раз.');
+          }
+        } finally {
+          loginBtn.disabled = false;
+        }
+      });
+    }
+
+    // Вызываем настройку после инициализации Firebase
+    window.addEventListener('fb-ready', () => {
+      setupGoogleAuth();
+    });
+    // анонимный вход упал — кнопка всё равно должна отвечать понятной ошибкой, а не молчать
+    window.addEventListener('fb-error', () => setupGoogleAuth());
+    if (window.FB && window.FB.uid) setupGoogleAuth();
 
     // Смена суток во время работы приложения
     let lastDay = dayKey();
@@ -5362,7 +5656,7 @@
 
     // PWA: офлайн-кеш (работает при размещении на сервере, рядом с sw.js)
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch((e) => console.warn('[Stride] SW', e)));
     }
   </script>
 </body>
