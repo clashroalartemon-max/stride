@@ -3587,27 +3587,24 @@
       } catch (err) {
         console.warn('Firestore: поиск', err); showResult('<div class="empty">Не удалось выполнить поиск — проверьте интернет</div>');
       }
-    });
-    $('friendResult').addEventListener('click', async (e) => {
+        $('friendResult').addEventListener('click', async (e) => {
       const btn = e.target.closest('#friendAddBtn');
       if (!btn || !foundUser) return;
       const target = foundUser;
       btn.disabled = true; btn.textContent = '…';
       try {
-        // встречный запрос от этого человека уже есть — просто принимаем его
         const incoming = S.friendRequests.find((r) => r.from === target.uid);
         if (incoming) { await acceptRequest(incoming); btn.textContent = 'Друзья ✓'; return; }
+        
         const reqs = FB.collection(FB.db, 'friendRequests');
-        const dup = await FB.getDocs(FB.query(reqs, FB.where('from', '==', myUid), FB.where('to', '==', target.uid)));
-        if (!dup.docs.some((d) => d.data().status === 'pending')) {
-          await FB.addDoc(reqs, { from: myUid, fromNick: S.nickname, to: target.uid, status: 'pending', createdAt: FB.serverTimestamp() });
-        }
+        await FB.addDoc(reqs, { from: myUid, fromNick: S.nickname, to: target.uid, status: 'pending', createdAt: FB.serverTimestamp() });
+        
         btn.textContent = 'Отправлено ✓';
         toast('📨', 'Запрос отправлен', '@' + target.nickname + ' увидит его в профиле');
       } catch (err) {
-        console.warn('Firestore: запрос в друзья', err);
+        console.error('ОШИБКА ДРУЗЕЙ:', err);
         btn.disabled = false; btn.textContent = 'Добавить';
-        toast('⚠️', 'Не удалось отправить', 'Проверьте интернет и попробуйте ещё раз');
+        toast('⚠️', 'Ошибка', err.message || 'Проверьте интернет');
       }
     });
 
