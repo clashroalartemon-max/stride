@@ -2985,7 +2985,7 @@
           const c = document.createElement('i');
           c.className = 'dc-coin';
           el.appendChild(c);
-          const a = Math.random() * Math.PI * 2, d = 40 + Math.random() * 60;
+          const a = Math.random() * Math.PI * 2, d = 150 + Math.random() * 60;
           c.animate([{ transform: 'translate(0,0) scale(.4)', opacity: 1 }, { transform: `translate(${Math.cos(a) * d}px, ${Math.sin(a) * d - 20}px) scale(1)`, opacity: 1, offset: .6 }, { transform: `translate(${Math.cos(a) * d}px, ${Math.sin(a) * d + 30}px) scale(.6)`, opacity: 0 }],
             { duration: 900 + Math.random() * 400, easing: 'ease-out', fill: 'forwards' }).onfinish = () => c.remove();
         }
