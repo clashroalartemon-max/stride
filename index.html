@@ -5347,8 +5347,8 @@
         prev = t; n++;
         if (t - first < 3000) { requestAnimationFrame(step); return; }
         if ((t - first) / n > 24 || janks >= 8) {
-  // document.documentElement.classList.add('weak'); // ОТКЛЮЧЕНО ДЛЯ ТЕСТА АНИМАЦИИ
-  // try { localStorage.setItem('stride.weak', String(Date.now())); } catch (e) {}
+   document.documentElement.classList.add('weak'); // ОТКЛЮЧЕНО ДЛЯ ТЕСТА АНИМАЦИИ
+   try { localStorage.setItem('stride.weak', String(Date.now())); } catch (e) {}
         }
       };
       requestAnimationFrame(step);
