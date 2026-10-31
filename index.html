@@ -26,7 +26,7 @@
       var h = document.documentElement, n = navigator;
       try { if (localStorage.getItem('stride.lite') === '1') h.classList.add('lite'); } catch (e) {}
       // weak: мало памяти/ядер, экономия трафика или прошлый замер FPS (stride.weak = время замера, действует 7 дней)
-      var weak = (n.deviceMemory && n.deviceMemory <= 2) || (n.hardwareConcurrency && n.hardwareConcurrency <= 4) || (n.connection && n.connection.saveData);
+      var weak = (n.deviceMemory && n.deviceMemory <= 4) || (n.hardwareConcurrency && n.hardwareConcurrency <= 4) || (n.connection && n.connection.saveData);
       try { var t = +localStorage.getItem('stride.weak'); if (t && Date.now() - t < 7 * 864e5) weak = true; } catch (e) {}
       if (weak) h.classList.add('weak');
     })();
@@ -1271,6 +1271,7 @@
   </style>
 </head>
 <body>
+  <div id="splash" style="position:fixed; inset:0; z-index:9999; background:#07070c; display:flex; align-items:center; justify-content:center; color:#c6ff3d; font-family:sans-serif; font-size:20px; transition: opacity 0.3s;">Загрузка...</div>
   <div class="backdrop"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="grain"></div></div>
 
   <!-- Общие SVG-градиенты -->
@@ -1603,10 +1604,6 @@
           </div>
         </div>
         <div class="row">
-          <div><b>Демо-режим</b><small>симуляция шагов без датчика (для ПК)</small></div>
-          <button class="switch" id="demoSw" aria-label="Демо-режим"></button>
-        </div>
-        <div class="row">
           <div><b>Выключить звуки</b><small>кейс, победа над боссом, старт</small></div>
           <button class="switch" id="muteSw" aria-label="Выключить звуки"></button>
         </div>
@@ -1920,7 +1917,6 @@
         workouts: [],
         activeWorkout: null,
         goal: 10000,
-        demo: false,
         seenAch: 0,
         height: null,                // рост, см (null — не указан)
         weight: null,                // вес, кг (null — не указан)
@@ -2073,7 +2069,6 @@
     let motionSeen = false;
     let motionShownAt = 0;    // когда последний раз выводили магнитуду
     let listenerAdded = false;
-    let demoTimer = null;
     let activeTimer = null;
     let wakeLock = null;
     let lastStepAt = 0;         // время последнего шага — для минут активности
@@ -2140,7 +2135,7 @@
     }
 
     function handleMotion(event) {
-      if (!isTracking || S.demo) return; // в демо-режиме шаги идут только от симуляции
+      if (!isTracking) return;
       const acc = event.accelerationIncludingGravity;
       if (!acc || acc.x === null || acc.y === null || acc.z === null) return;
 
@@ -2197,6 +2192,7 @@
       }
     }
 
+    let renderPending = false; // уже запланирован renderLive() на следующий кадр
     function addStep() {
       if (isBanned) return;
       const d = today();
@@ -2205,7 +2201,11 @@
       lastStepAt = Date.now();
       if (S.activeWorkout && !S.activeWorkout.pausedAt) S.activeWorkout.steps++;
       save();
-      renderLive(true);
+      // DOM обновляется не чаще одного раза за кадр: шаги между кадрами копятся, рисуется итог
+      if (!renderPending) {
+        renderPending = true;
+        requestAnimationFrame(() => { renderPending = false; renderLive(true); });
+      }
       checkStreak();
       checkAchievements();
       bossHit();
@@ -2220,16 +2220,6 @@
       }
       return Promise.resolve();
     }
-
-    // ----- Демо-таймер: один источник правды, всегда гасится через stopDemo() -----
-    function startDemo() {
-      stopDemo();
-      demoTimer = setInterval(() => {
-        if (!S.demo || !isTracking) { stopDemo(); return; } // страховка: демо выключили — шаги больше не идут
-        if (Math.random() > .12) addStep();
-      }, 520);
-    }
-    function stopDemo() { clearInterval(demoTimer); demoTimer = null; }
 
     async function enableSensor() {
       await requestMotion();
@@ -2246,20 +2236,16 @@
     }
 
     async function doStartTracking() {
-      if (!S.demo) {
-        try { await requestMotion(); }
-        catch (err) { setStatus(err.message || 'Ошибка запроса доступа', true); return false; }
-        if (!listenerAdded) { window.addEventListener('devicemotion', handleMotion); listenerAdded = true; }
-      }
+      try { await requestMotion(); }
+      catch (err) { setStatus(err.message || 'Ошибка запроса доступа', true); return false; }
+      if (!listenerAdded) { window.addEventListener('devicemotion', handleMotion); listenerAdded = true; }
       isTracking = true;
       isPeak = false;
       lastStepTime = 0;
       motionSeen = false;
       statusHoldUntil = 0;
       smoothMag = 0; calibTries = 0;
-      if (!S.demo && !calib) beginCalibration();
-
-      if (S.demo) startDemo();
+      if (!calib) beginCalibration();
 
       // минуты активности
       clearInterval(activeTimer);
@@ -2270,7 +2256,7 @@
       requestWakeLock();
 
       setTimeout(() => {
-        if (isTracking && !S.demo && !motionSeen) setStatus('Датчик движения не отвечает. На ПК включите «Демо-режим» в профиле.', true);
+        if (isTracking && !motionSeen) setStatus('Датчик движения не отвечает. Откройте приложение на телефоне с акселерометром.', true);
       }, 3000);
 
       startRoute();
@@ -2281,7 +2267,6 @@
     function stopTracking() {
       isTracking = false;
       calibrating = false; // незавершённая калибровка не сохраняется
-      stopDemo();
       stopRoute();
       clearInterval(activeTimer); activeTimer = null;
       releaseWakeLock();
@@ -2323,7 +2308,7 @@
       toggleBtn.innerHTML = isTracking ? ICON_STOP + '<span>СТОП</span>' : ICON_PLAY + '<span>СТАРТ</span>';
       $('ringWrap').classList.toggle('live', isTracking);
       if (isTracking && calibrating) setStatus('<span class="dot"></span>Калибровка датчика… держите телефон неподвижно 2 секунды');
-      else if (isTracking) setStatus('<span class="dot"></span>' + (S.demo ? 'Демо-режим: шаги симулируются' : 'Идёт подсчёт. Держите телефон в руке или кармане.'));
+      else if (isTracking) setStatus('<span class="dot"></span>' + 'Идёт подсчёт. Держите телефон в руке или кармане.');
       else setStatus(today().steps ? 'Пауза. Сегодня уже ' + fmt(today().steps) + ' ' + plural(today().steps, 'шаг', 'шага', 'шагов') : 'Нажмите «Старт» и разрешите доступ к движению');
     }
 
@@ -2769,7 +2754,6 @@
     function renderSettings() {
       $('goalVal').textContent = fmt(S.goal);
       $('goalTxt').textContent = fmt(S.goal);
-      $('demoSw').classList.toggle('on', S.demo);
       $('muteSw').classList.toggle('on', !!S.mute);
       $('liteSw').classList.toggle('on', liteMode);
       if (document.activeElement !== $('heightInput')) $('heightInput').value = S.height || '';
@@ -2786,21 +2770,6 @@
     }
     $('goalMinus').addEventListener('click', () => changeGoal(-1000));
     $('goalPlus').addEventListener('click', () => changeGoal(1000));
-    $('demoSw').addEventListener('click', async () => {
-      stopDemo(); // при любом переключении старый таймер симуляции гасится сразу
-      S.demo = !S.demo;
-      save(true); renderSettings();
-      if (!isTracking) return;
-      // подсчёт продолжается без перезапуска (маршрут и тренировка не прерываются), меняется только источник шагов
-      if (S.demo) { calibrating = false; startDemo(); }
-      else {
-        try { await enableSensor(); } catch (err) { setStatus(err.message || 'Ошибка запроса доступа', true); return; }
-        smoothMag = 0; isPeak = false; motionSeen = false;
-        if (!calib) beginCalibration();
-        setTimeout(() => { if (isTracking && !S.demo && !motionSeen) setStatus('Датчик движения не отвечает. На ПК включите «Демо-режим» в профиле.', true); }, 3000);
-      }
-      renderTracking();
-    });
     $('muteSw').addEventListener('click', () => {
       S.mute = !S.mute;
       save(true); renderSettings();
@@ -2822,13 +2791,13 @@
       try { localStorage.removeItem(CALIB_KEY); } catch (e) {}
       calib = null;
       renderCalibInfo();
-      if (isTracking && !S.demo) { beginCalibration(); renderTracking(); toast('🎯', 'Калибровка запущена', 'Держите телефон неподвижно 2 секунды'); }
+      if (isTracking) { beginCalibration(); renderTracking(); toast('🎯', 'Калибровка запущена', 'Держите телефон неподвижно 2 секунды'); }
       else toast('🎯', 'Калибровка сброшена', 'Выполнится при следующем «Старте»');
     });
     // Сброс только шагов: имя, скины, босс, питомец, вода, маршруты и настройки остаются
     function resetSteps() {
       if (isTracking) stopTracking();
-      const keep = ['name', 'owned', 'frame', 'bg', 'font', 'boss', 'pet', 'goal', 'demo', 'height', 'weight', 'mute', 'waterHist', 'routes', 'sex', 'age', 'foodGoal', 'foodDays', 'petType', 'pets', 'petStates', 'promoOpened', 'foodAdded'];
+      const keep = ['name', 'owned', 'frame', 'bg', 'font', 'boss', 'pet', 'goal', 'height', 'weight', 'mute', 'waterHist', 'routes', 'sex', 'age', 'foodGoal', 'foodDays', 'petType', 'pets', 'petStates', 'promoOpened', 'foodAdded'];
       const fresh = defaults();
       keep.forEach((k) => { fresh[k] = S[k]; });
       if (S.daily && S.daily.day === dayKey()) {
@@ -4185,7 +4154,7 @@
     const ROUTE_MIN_STEP = 4;   // м: точки ближе не записываем (дрожание GPS)
     const ROUTE_MAX_ACC = 50;   // м: точки с худшей точностью отбрасываем
     let map = null, meMarker = null, liveLine = null, savedLine = null;
-    let routeWatch = null, lastPos = null, geoError = '';
+    let routeWatch = null, lastPos = null, geoError = '', geoDenied = false;
 
     function haversine(a, b) {
       const R = 6371000, rad = Math.PI / 180;
@@ -4279,15 +4248,31 @@
     }
 
     function onGeoError(err) {
-      geoError = err && err.code === 1 ? 'Доступ к геолокации запрещён' : 'Не удалось определить местоположение';
+      const denied = !!(err && err.code === 1);
+      geoError = denied ? 'Доступ к геолокации запрещён' : 'Не удалось определить местоположение';
+      geoDenied = denied;
+      showMapDenied();
       renderMapInfo();
-      if (!weatherShown) weatherFail(geoError.toLowerCase());
+      if (denied) weatherFail('Погода не работает без разрешения', true);
+      else if (!weatherShown) weatherFail(geoError.toLowerCase());
+    }
+
+    // Геолокация запрещена: вместо карты (или пустого блока) — понятная заглушка. Разрешили — карта возвращается.
+    function showMapDenied() {
+      const el = $('liveMap'), stub = $('mapDenied');
+      if (!geoDenied) {
+        if (stub) { stub.remove(); el.style.display = ''; refreshMap(); }
+        return;
+      }
+      if (stub) return;
+      el.style.display = 'none';
+      el.insertAdjacentHTML('afterend', '<div class="map-fallback" id="mapDenied"><span><b>📍</b><br>Карта не работает без разрешения. Разрешите доступ в настройках браузера</span></div>');
     }
 
     function locateOnce() {
       if (!('geolocation' in navigator)) { onGeoError(null); return; }
       navigator.geolocation.getCurrentPosition((pos) => {
-        geoError = '';
+        geoError = ''; geoDenied = false; showMapDenied();
         const ll = [+pos.coords.latitude.toFixed(6), +pos.coords.longitude.toFixed(6)];
         placeMe(ll, true);
         loadWeather(ll[0], ll[1]);
@@ -4307,6 +4292,7 @@
 
     function onRoutePos(pos) {
       geoError = '';
+      if (geoDenied) { geoDenied = false; showMapDenied(); }
       const ll = [+pos.coords.latitude.toFixed(6), +pos.coords.longitude.toFixed(6)];
       const first = !lastPos;
       placeMe(ll, first);
@@ -4409,10 +4395,10 @@
       $('wxSub').textContent = 'ощущается ' + Math.round(w.feels) + '° · ветер ' + Math.round(w.wind) + ' м/с' + (stale ? ' · офлайн' : '');
     }
 
-    function weatherFail(msg) {
+    function weatherFail(msg, denied) {
       $('weatherCard').classList.remove('loading');
-      $('wxIco').textContent = '🌡️';
-      $('wxDesc').textContent = 'Погода недоступна';
+      $('wxIco').textContent = denied ? '📍' : '🌡️';
+      $('wxDesc').textContent = denied ? 'Нет доступа' : 'Погода недоступна';
       $('wxSub').textContent = msg;
       $('wxTemp').textContent = '—';
     }
@@ -5084,7 +5070,6 @@
       $('banScreen').hidden = !v;
       if (v) {
         if (isTracking) stopTracking();
-        stopDemo();
         ['modal', 'friendModal', 'wheelModal', 'foodModal', 'admUserModal'].forEach((id) => $(id).classList.remove('open'));
         document.activeElement && document.activeElement.blur();
       }
@@ -5096,20 +5081,15 @@
 
     // ================================================================
     //  АДМИН-ПАНЕЛЬ
-    //  Доступ: мой ник == ADMIN_NICK и бронь nicknames/admin принадлежит моему uid
+    //  Доступ: только мой Firebase uid (MY_ADMIN_UID), ник роли не играет
     // ================================================================
     let isAdmin = false, adminCheckFor = null;
     let adminUsers = [];          // последний загруженный список пользователей
     let managed = null;           // пользователь, открытый в окне «Управление»
+    const MY_ADMIN_UID = 'ЗАМЕНИ_НА_МОЙ_UID_ИЗ_FIREBASE';
     async function checkAdmin() {
-      const nick = cloudMe && cloudMe.nickname;
-      if (!myUid || nickKey(nick) !== ADMIN_NICK) { adminCheckFor = null; setAdmin(false); return; }
-      if (adminCheckFor === myUid + ':' + nick && isAdmin) return;
-      adminCheckFor = myUid + ':' + nick;
-      try {
-        const snap = await FB.getDoc(nickRef(ADMIN_NICK));
-        setAdmin(snap.exists() && snap.data().uid === myUid);
-      } catch (e) { console.warn('Firestore: проверка админа', e); setAdmin(false); }
+      adminCheckFor = myUid || null;
+      setAdmin(!!myUid && myUid === MY_ADMIN_UID);
     }
     function setAdmin(v) {
       isAdmin = !!v;
@@ -5373,6 +5353,7 @@
       };
       requestAnimationFrame(step);
     }
+    document.getElementById('splash').style.opacity = '0'; setTimeout(() => document.getElementById('splash').remove(), 300);
     setTimeout(probeSmoothness, 1500); // первые кадры после загрузки — шрифты и Firebase, их не считаем
 
     // Смена суток во время работы приложения
