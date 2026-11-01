@@ -177,7 +177,6 @@
       background: linear-gradient(var(--surface), var(--surface)) rgba(14, 14, 22, .4);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      transform: translateZ(0); backface-visibility: hidden; -webkit-backface-visibility: hidden;
       box-shadow: 0 10px 40px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .06);
     }
     .card { padding: 18px; }
@@ -466,9 +465,12 @@
       width: calc(100% - 24px); max-width: 456px; height: var(--nav-h);
       display: grid; grid-template-columns: repeat(6, 1fr);
       padding: 8px; border-radius: 26px;
-      background: rgba(14, 14, 24, 0.98) !important; border: 1px solid var(--border);
+      background: #0e0e18 !important; border: 1px solid var(--border);
       backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
       box-shadow: 0 16px 50px rgba(0, 0, 0, .55);
+      /* iOS Safari: fixed-меню на собственном стабильном слое — без полос и ряби при скролле */
+      transform: translateZ(0); -webkit-transform: translateZ(0);
+      backface-visibility: hidden; -webkit-backface-visibility: hidden;
     }
     .nav .pill {
       position: absolute; top: 8px; bottom: 8px; left: 8px; width: calc((100% - 16px) / 6);
@@ -1512,13 +1514,8 @@
     /* ---- Каскад при открытии вкладки (классы ставит staggerIn() в JS, снимает animationend) ----
        .anim-fade — стекло: только opacity; .anim-in — обычные блоки и .anim-item — строки списков: подъём снизу.
        fill-mode backwards (не both), чтобы после анимации не удерживался transform и работали :active-нажатия. */
-    .anim-in, .anim-item, .anim-fade {
-      animation: slideUp calc(var(--anim-speed) * 1.25) var(--anim-ease) backwards;
-      animation-delay: calc(var(--i, 0) * var(--stagger));
-    }
-    .anim-fade { animation-name: fadeIn; }
-    @keyframes slideUp { from { opacity: 0; transform: translate3d(0, 18px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
-    @keyframes fadeIn { from { opacity: 0; transform: translateZ(0); } to { opacity: 1; transform: translateZ(0); } }
+    /* Каскад отключён: на iOS Safari он давал цветные полосы и рябь при переключении вкладок */
+    .anim-in, .anim-item, .anim-fade { animation: none !important; }
 
     /* ---- Режим экономии (html.lite): мгновенно, без keyframes, свечений и размытия ---- */
     html.lite { --anim-speed: 0s; --anim-ease: linear; --stagger: 0ms; }
@@ -2416,27 +2413,10 @@
     const calmMotion = () => liteMode || !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     function clearAnim(el) { el.classList.remove(...ANIM_CLASSES); el.style.removeProperty('--i'); }
     function clearStagger(root) { root.querySelectorAll('.anim-in, .anim-fade, .anim-item').forEach(clearAnim); }
+    // Каскад отключён (рябь на iOS Safari): только снимаем старые классы, новые не ставим
     function staggerIn(tab) {
       if (!tab) return;
       clearStagger(tab);
-      if (calmMotion()) return;
-      const blocks = [];
-      for (const el of tab.children) {
-        if (!isShown(el)) continue;
-        if (!el.classList.contains('glass') && el.querySelector('.glass')) { for (const c of el.children) if (isShown(c)) blocks.push(c); }
-        else blocks.push(el);
-      }
-      const marks = [];
-      blocks.slice(0, STAGGER_BLOCKS).forEach((el, i) => {
-        marks.push([el, el.classList.contains('glass') ? 'anim-fade' : 'anim-in', i]);
-        let j = 0;
-        for (const row of el.querySelectorAll(STAGGER_ROWS)) {
-          if (j >= STAGGER_ROWS_MAX) break;
-          if (isShown(row)) marks.push([row, 'anim-item', i + 1 + j++ * .8]);
-        }
-      });
-      void tab.offsetWidth; // снятые классы применяются раньше новых — анимация стартует заново
-      for (const [el, cls, i] of marks) { el.style.setProperty('--i', i); el.classList.add(cls); }
     }
     document.addEventListener('animationend', (e) => {
       if ((e.animationName === 'slideUp' || e.animationName === 'fadeIn') && e.target.classList) clearAnim(e.target);
@@ -5130,8 +5110,13 @@
         }
         if (!res.ok) {
           const errText = await res.text().catch(() => '');
-          console.warn('[Stride] Gemini HTTP', res.status, errText.slice(0, 300));
-          throw new Error('GEMINI_HTTP_' + res.status);
+          console.error('[Stride] GEMINI ERROR:', res.status, errText);
+          let detail = '';
+          try { const j = JSON.parse(errText); detail = (j && j.error && (j.error.status || j.error.message)) || ''; } catch (e) {}
+          const err = new Error('GEMINI_HTTP_' + res.status);
+          err.status = res.status;
+          err.detail = String(detail).slice(0, 160);
+          throw err;
         }
         json = await res.json().catch(() => null);
       } finally {
@@ -5255,7 +5240,6 @@
         openFoodModal(dish, photo);
       } catch (err) {
         if (session !== camSession) return;
-        // сырой текст ошибки API в интерфейс не выводим
         const msg = err && err.message ? String(err.message) : '';
         const isGemini = msg.startsWith('GEMINI_') || (err && err.name === 'AbortError');
         if (err && err.code === 'NOT_FOOD') {
@@ -5269,6 +5253,11 @@
           closeCamera();
           openFoodModal(null, photo);
           toast('🤔', 'Не удалось оценить калории', 'Введите блюдо и КБЖУ вручную');
+        } else if (err && (err.status === 400 || err.status === 401 || err.status === 403)) {
+          // ошибка ключа / доступа к Gemini — показываем код и причину от Google (например, PERMISSION_DENIED)
+          setCamState('err', 'Ошибка ключа API. Код: ' + err.status + (err.detail ? ' — ' + err.detail : ''));
+        } else if (err && err.status) {
+          setCamState('err', 'Ошибка сервиса распознавания. Код: ' + err.status + (err.detail ? ' — ' + err.detail : ''));
         } else if (isGemini) {
           setCamState('err', 'Не удалось распознать блюдо. Проверьте интернет и попробуйте ещё раз.');
         } else {
