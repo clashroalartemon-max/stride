@@ -16,4 +16,4 @@
 
 ## Локальный запуск
 Откройте `index.html` в браузере или выполните `netlify dev --port 8889`.
-Файлы PWA (`manifest.webmanifest`, `sw.js`, `icons/`), на которые ссылается страница, нужно положить рядом с `index.html`.
+Файлы PWA (`manifest.webmanifest`, `sw.js`, `icons/`), на которые ссылается страница, нужно положить рядом с `index.html`.. 
