@@ -118,12 +118,16 @@
     input { font: inherit; color: inherit; }
 
     /* ===== Фон: живые неоновые пятна ===== */
-    .backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
-    .blob { position: absolute; border-radius: 50%; opacity: .45; }
+    /* Фон — сплошной цвет без градиентов и слоёв: под fixed-меню Chrome на Android нечего перерисовывать */
+    .backdrop {
+      position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background: #07070c; /* Сплошной цвет, без градиентов */
+    }
+    .blob { position: absolute; border-radius: 50%; opacity: .45; display: none !important; }
     .blob.b1 { width: 560px; height: 560px; background: radial-gradient(closest-side, #3d7bff, rgba(61, 123, 255, .5) 45%, rgba(61, 123, 255, 0)); top: -220px; left: -220px; }
     .blob.b2 { width: 500px; height: 500px; background: radial-gradient(closest-side, #ff3d9a, rgba(255, 61, 154, .5) 45%, rgba(255, 61, 154, 0)); top: calc(35% - 100px); right: -260px; opacity: .28; }
     .blob.b3 { width: 520px; height: 520px; background: radial-gradient(closest-side, #2bd98a, rgba(43, 217, 138, .5) 45%, rgba(43, 217, 138, 0)); bottom: -240px; left: calc(10% - 100px); opacity: .25; }
-    .grain { position: absolute; inset: 0; opacity: .06; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+    .grain { display: none !important; position: absolute; inset: 0; opacity: .06; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 
     /* ===== Каркас ===== */
     .app {
@@ -131,7 +135,7 @@
       margin: 0 auto;
       min-height: 100%;
       isolation: isolate;
-      padding: calc(env(safe-area-inset-top) + 18px) 18px 24px;
+      padding: calc(env(safe-area-inset-top) + 18px) 18px calc(var(--nav-h) + env(safe-area-inset-bottom) + 28px);
     }
     .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
     .hello small { display: block; font-size: 12px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
@@ -459,11 +463,13 @@
     .danger { color: #ff6b8b; font-weight: 700; font-size: 14px; padding: 6px 12px; border-radius: 12px; background: rgba(255, 61, 110, .1); }
 
     /* ===== Нижняя навигация ===== */
-    /* Меню — обычный блок в конце страницы (не fixed): Chrome на Android не рисует полосы при скролле */
+    /* Меню снова fixed; полосы убраны за счёт сплошного фона под ним (.backdrop) — без transform/will-change/contain */
     .nav {
-      position: relative; isolation: isolate;
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom) + 12px);
+      left: 0; right: 0; margin: 0 auto;
       width: calc(100% - 24px); max-width: 456px; height: var(--nav-h);
-      margin: 24px auto 12px;
+      z-index: 30; isolation: isolate;
       display: grid; grid-template-columns: repeat(6, 1fr);
       padding: 8px; border-radius: 26px;
       background: #0e0e18 !important; border: 1px solid var(--border);
@@ -859,12 +865,6 @@
     .weak .me-dot::after { opacity: .35; }
     /* фон: вместо размытых анимированных пятен — статичные градиенты */
     .lite .blob, .weak .blob, .lite .grain, .weak .grain { display: none; }
-    .lite .backdrop, .weak .backdrop {
-      background:
-        radial-gradient(circle at 0% 0%, rgba(61, 123, 255, .32), transparent 45%),
-        radial-gradient(circle at 100% 45%, rgba(255, 61, 154, .18), transparent 40%),
-        radial-gradient(circle at 25% 100%, rgba(43, 217, 138, .16), transparent 45%);
-    }
     /* стекло без backdrop-filter (самое дорогое для GPU); плашки поверх контента — плотнее */
     .lite .glass, .lite .coin-pill, .lite .streak-pill, .lite .map-overlay, .lite .toast, .lite .cam-x, .lite .modal .shade,
     .weak .glass, .weak .coin-pill, .weak .streak-pill, .weak .map-overlay, .weak .toast, .weak .cam-x, .weak .modal .shade { backdrop-filter: none; -webkit-backdrop-filter: none; }
@@ -1449,35 +1449,14 @@
     .nav button:active svg { transform: scale(.88); transition-duration: calc(var(--anim-speed) * .25); }
     .nav .pill {
       background: linear-gradient(135deg, rgba(198, 255, 61, .2), rgba(34, 227, 255, .14));
-      border-color: rgba(198, 255, 61, .3); box-shadow: 0 0 22px rgba(198, 255, 61, .14), inset 0 1px 0 rgba(255, 255, 255, .1);
+      border-color: rgba(198, 255, 61, .3);
     }
     @media (max-width: 360px) { .nav button span { font-size: 8.5px; } }
-
-    /* ---- Фоновые темы: дорогие фоны профиля перекрашивают всё приложение ---- */
-    .backdrop { transition: background calc(var(--anim-speed) * 1.5) ease; }
-    .backdrop.theme-fade { animation: themeIn .8s ease-out; }
-    @keyframes themeIn { from { opacity: 0; } }
-    .backdrop.themed .blob { opacity: .14; }
-    .backdrop.theme-cyber { background: radial-gradient(circle at 100% 0%, rgba(34, 227, 255, 0.3), transparent 60%), radial-gradient(circle at 0% 100%, rgba(255, 61, 154, 0.3), transparent 60%), #07070c; }
-    .backdrop.theme-space { background: radial-gradient(circle at 50% 50%, rgba(123, 92, 255, 0.4), #000 70%); }
-    .backdrop.theme-galaxy { background: radial-gradient(circle at 50% 50%, rgba(255, 61, 154, 0.3), transparent 60%), radial-gradient(circle at 100% 0%, rgba(123, 92, 255, 0.4), transparent 60%), #04030c; }
-    .backdrop.theme-mountain { background: linear-gradient(180deg, rgba(123, 92, 255, 0.4), rgba(255, 61, 154, 0.3) 45%, rgba(255, 138, 61, 0.4) 70%), #07070c; }
-    .backdrop.theme-vip { background: radial-gradient(circle at 50% 0%, rgba(255, 217, 74, 0.4), transparent 70%), #07070c; }
-    .backdrop.theme-void { background: radial-gradient(circle at 50% 50%, rgba(123, 92, 255, 0.5), #000 70%); }
-    .backdrop.theme-admin {
-      background:
-        repeating-linear-gradient(45deg, rgba(255, 217, 74, 0.12) 0 2px, transparent 2px 12px),
-        radial-gradient(circle at 50% 0%, rgba(255, 194, 26, 0.6), transparent 70%),
-        linear-gradient(180deg, #2a1a00 0%, #07070c 100%);
-      background-size: auto, auto, 100% 100%;
-    }
 
     /* ---- Стабильный рендеринг: без глитчей стекла при скролле и переключении вкладок ---- */
     /* стекло — отдельный контекст наложения: декоративные слои с z-index:-1 (#pbg, ::before) не уходят под фон,
        даже когда backdrop-filter выключен в режимах lite/weak */
     .glass { isolation: isolate; }
-    /* фон — на собственном GPU-слое, чтобы его перерисовка не трогала стекло сверху */
-    .backdrop { transform: translateZ(0); backface-visibility: hidden; -webkit-backface-visibility: hidden; contain: strict; }
     /* То, что двигается через transform, не размывает фон под собой: шторки модалок и тосты плотные */
     .modal .sheet { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(20, 20, 32, .97); }
     .toast { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(22, 22, 34, .97); }
@@ -1489,9 +1468,6 @@
        а его предки не анимируют opacity/filter/transform. Иначе стекло пересчитывает размытие
        каждый кадр и на мобильных даёт цветные полосы и рябь (особенно у нижнего меню).
        ===================================================================== */
-
-    /* ---- Фон: один статичный слой, дотянут ниже экрана — при скрытии адресной строки снизу нет полосы ---- */
-    .backdrop { bottom: auto; height: calc(100vh + 80px); height: calc(100lvh + 80px); }
 
     /* ---- Нажимаемое стекло (кейс, колесо, кнопки друзей) и плашки монет/серии сжимаются при нажатии,
        поэтому они без backdrop-filter: плотный фон выглядит так же, но ничего не пересчитывает ---- */
