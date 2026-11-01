@@ -1,19 +1,7 @@
-# Stride: PWA-шагомер
+# Stride
 
-Шагомер в одном файле `index.html`: считает шаги, тренировки и питание, а также даёт монеты, достижения, колесо фортуны, магазин скинов, босса, друзей и админ-панель.
+Stride is a PWA pedometer packed into a single `index.html`: steps, workouts, achievements, a shop with profile backgrounds, friends, and settings. It uses plain HTML/CSS/JS with Firebase and Leaflet loaded from a CDN.
 
-## Кейсы (лутбоксы)
-- На вкладке «Достижения» под колесом фортуны есть карусель кейсов. Каждая карточка показывает тип (обычный, редкий или эпический), иконку, название и цену. Кнопка «?» показывает состав кейса и шансы.
-- После «Открыть» списываются монеты, кейс трясётся 1.5 с под звук `case_open`, а затем открывается окно с наградой.
-- Если выпал скин, он попадает в `S.owned`. Если такой скин уже есть, игрок получает компенсацию в 30 % от цены кейса. Монеты зачисляются сразу.
-- В админ-панели есть блок «Управление кейсами». Там можно менять название, иконку, цену, тип и список наград каждого кейса, а также добавлять и удалять кейсы или сбрасывать их к 10 стандартным.
-- Формат наград: `coins:500*40, frame:f-neon*10, bg:b-space, font:n-gold`. Число после `*` задаёт вес (шанс), без него вес равен 1.
-- Кейсы хранятся в `S.cases` (localStorage, ключ `stride.v2`).
-- Лимитированные предметы, которые выпадают только из кейсов: `f-void`, `f-phoenix`, `b-void`, `b-nebula`, `n-plasma`.
+## Run locally
 
-## Технологии
-Чистые HTML, CSS и JS без сборки, localStorage, Firebase (друзья и рейтинг), звуки синтезируются в WAV.
-
-## Локальный запуск
-Откройте `index.html` в браузере или выполните `netlify dev --port 8889`.
-Файлы PWA (`manifest.webmanifest`, `sw.js`, `icons/`), на которые ссылается страница, нужно положить рядом с `index.html`.
+No build step is needed. Serve the folder with any static server, for example `npx serve .`, or run `netlify dev --port 8889`.

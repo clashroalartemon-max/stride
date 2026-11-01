@@ -119,10 +119,10 @@
 
     /* ===== Фон: живые неоновые пятна ===== */
     .backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
-    .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .45; }
-    .blob.b1 { width: 360px; height: 360px; background: #3d7bff; top: -120px; left: -120px; }
-    .blob.b2 { width: 300px; height: 300px; background: var(--pink); top: 35%; right: -160px; opacity: .28; }
-    .blob.b3 { width: 320px; height: 320px; background: #2bd98a; bottom: -140px; left: 10%; opacity: .25; }
+    .blob { position: absolute; border-radius: 50%; opacity: .45; }
+    .blob.b1 { width: 560px; height: 560px; background: radial-gradient(closest-side, #3d7bff, rgba(61, 123, 255, .5) 45%, rgba(61, 123, 255, 0)); top: -220px; left: -220px; }
+    .blob.b2 { width: 500px; height: 500px; background: radial-gradient(closest-side, #ff3d9a, rgba(255, 61, 154, .5) 45%, rgba(255, 61, 154, 0)); top: calc(35% - 100px); right: -260px; opacity: .28; }
+    .blob.b3 { width: 520px; height: 520px; background: radial-gradient(closest-side, #2bd98a, rgba(43, 217, 138, .5) 45%, rgba(43, 217, 138, 0)); bottom: -240px; left: calc(10% - 100px); opacity: .25; }
     .grain { position: absolute; inset: 0; opacity: .06; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 
     /* ===== Каркас ===== */
@@ -130,6 +130,7 @@
       max-width: 480px;
       margin: 0 auto;
       min-height: 100%;
+      isolation: isolate;
       padding: calc(env(safe-area-inset-top) + 18px) 18px calc(var(--nav-h) + env(safe-area-inset-bottom) + 28px);
     }
     .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
@@ -138,8 +139,7 @@
     .coin-pill {
       display: flex; align-items: center; gap: 8px;
       padding: 8px 14px 8px 8px; border-radius: 99px;
-      background: var(--surface); border: 1px solid var(--border);
-      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      background: rgba(22, 23, 34, .9); border: 1px solid var(--border);
       font-weight: 800; font-variant-numeric: tabular-nums;
       transition: transform calc(var(--anim-speed) * .75) var(--anim-ease);
     }
@@ -148,8 +148,7 @@
     .streak-pill {
       display: flex; align-items: center; gap: 6px; height: 40px;
       padding: 0 14px 0 10px; border-radius: 99px;
-      background: var(--surface); border: 1px solid var(--border);
-      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      background: rgba(22, 23, 34, .9); border: 1px solid var(--border);
       font-weight: 800; font-variant-numeric: tabular-nums; color: var(--muted);
       transition: transform calc(var(--anim-speed) * .75) var(--anim-ease), color calc(var(--anim-speed) * .75), border-color calc(var(--anim-speed) * .75), background calc(var(--anim-speed) * .75);
     }
@@ -175,11 +174,10 @@
 
     .glass {
       position: relative;
-      background: var(--surface);
+      background: linear-gradient(var(--surface), var(--surface)) rgba(14, 14, 22, .4);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      transform: translateZ(0); backface-visibility: hidden; -webkit-backface-visibility: hidden;
       box-shadow: 0 10px 40px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .06);
     }
     .card { padding: 18px; }
@@ -258,8 +256,7 @@
       position: absolute; left: 12px; right: 12px; bottom: 12px;
       display: flex; align-items: center; justify-content: space-between; gap: 10px;
       padding: 10px 12px; border-radius: 16px;
-      background: rgba(10, 10, 18, .6); border: 1px solid var(--border);
-      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      background: rgba(10, 10, 18, .88); border: 1px solid var(--border);
     }
     .map-overlay b { font-size: 14px; display: block; }
     .map-overlay small { font-size: 11px; color: var(--muted); }
@@ -464,13 +461,13 @@
 
     /* ===== Нижняя навигация ===== */
     .nav {
-      position: fixed; z-index: 20; left: 0; right: 0; margin: 0 auto; transform: translateZ(0); isolation: isolate;
+      position: fixed; z-index: 20; left: 0; right: 0; margin: 0 auto; isolation: isolate;
       bottom: calc(env(safe-area-inset-bottom) + 12px);
       width: calc(100% - 24px); max-width: 456px; height: var(--nav-h);
       display: grid; grid-template-columns: repeat(6, 1fr);
       padding: 8px; border-radius: 26px;
-      background: rgba(16, 16, 26, .72); border: 1px solid var(--border);
-      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      background: rgba(14, 14, 24, 0.98) !important; border: 1px solid var(--border);
+      backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
       box-shadow: 0 16px 50px rgba(0, 0, 0, .55);
     }
     .nav .pill {
@@ -488,7 +485,7 @@
 
     /* ===== Модальное окно и тосты ===== */
     .modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; padding: 16px; padding-bottom: calc(env(safe-area-inset-bottom) + 16px); visibility: hidden; }
-    .modal .shade { position: absolute; inset: 0; background: rgba(0, 0, 0, .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); opacity: 0; transition: opacity calc(var(--anim-speed) * .875); }
+    .modal .shade { position: absolute; inset: 0; background: rgba(0, 0, 0, .7); opacity: 0; transition: opacity calc(var(--anim-speed) * .875); }
     .modal .sheet {
       position: relative; width: 100%; max-width: 440px; padding: 28px 22px 20px; text-align: center;
       background: rgba(22, 22, 34, .92); transform: translateY(110%); transition: transform calc(var(--anim-speed) * 1.125) var(--anim-ease);
@@ -507,8 +504,7 @@
     .toasts { position: fixed; top: calc(env(safe-area-inset-top) + 12px); left: 50%; transform: translateX(-50%); width: calc(100% - 24px); max-width: 440px; z-index: 60; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
     .toast {
       display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px;
-      background: rgba(22, 22, 34, .9); border: 1px solid rgba(198, 255, 61, .35);
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      background: rgba(22, 22, 34, .97); border: 1px solid rgba(198, 255, 61, .35);
       box-shadow: 0 12px 40px rgba(0, 0, 0, .5), 0 0 30px rgba(198, 255, 61, .15);
       animation: toastIn .55s var(--ease) both;
     }
@@ -805,7 +801,7 @@
     .cam.busy video, .cam.err video { visibility: hidden; }
     .cam-top { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14px) 16px 14px; background: linear-gradient(rgba(0, 0, 0, .6), transparent); }
     .cam-top b { font-family: var(--display); font-size: 15px; font-weight: 700; }
-    .cam-x { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 18px; background: rgba(255, 255, 255, .12); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    .cam-x { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 18px; background: rgba(0, 0, 0, .45); }
     .cam-x:active { transform: scale(.92); }
     .cam-frame { position: relative; z-index: 1; flex: 1; margin: 8% 10%; border-radius: 28px; pointer-events: none;
       background:
@@ -1030,7 +1026,13 @@
         radial-gradient(30% 22% at 50% 62%, rgba(255, 214, 120, .9), transparent 70%),
         linear-gradient(180deg, rgba(123, 92, 255, .55), rgba(255, 61, 154, .55) 45%, rgba(255, 138, 61, .65) 70%);
     }
-    .bg-vip { background: radial-gradient(60% 50% at 50% 0%, rgba(255, 217, 74, .55), transparent 70%), repeating-linear-gradient(45deg, rgba(255, 217, 74, .12) 0 2px, transparent 2px 12px), linear-gradient(180deg, #1c1404, #07070c); }
+    .bg-vip {
+      overflow: hidden;
+      background:
+        repeating-linear-gradient(45deg, rgba(255, 217, 74, 0.12) 0 2px, transparent 2px 12px),
+        radial-gradient(60% 50% at 50% 0%, rgba(255, 217, 74, 0.55), transparent 70%),
+        linear-gradient(180deg, #1c1404, #07070c);
+    }
     .bg-like { background: radial-gradient(40% 40% at 30% 30%, rgba(255, 61, 154, .6), transparent 70%), radial-gradient(40% 40% at 75% 70%, rgba(255, 90, 90, .5), transparent 70%), linear-gradient(180deg, rgba(123, 92, 255, .35), rgba(255, 61, 154, .3)); }
 
     /* Лимитированный шрифт */
@@ -1372,13 +1374,6 @@
     .q-track i, .ach .mini-track i { transition: width calc(var(--anim-speed) * 2.5) var(--anim-ease); }
     .wbar { transition: height calc(var(--anim-speed) * 2.25) var(--anim-ease); }
     .bar-fill, .q-track i, .ach .mini-track i { position: relative; overflow: hidden; }
-    .bar-fill::after {
-      content: ''; position: absolute; inset: 0; border-radius: inherit;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .35), transparent);
-      transform: translateX(-100%); animation: barSheen 3.2s ease-in-out infinite;
-    }
-    @keyframes barSheen { 55%, 100% { transform: translateX(100%); } }
-    .lite .bar-fill::after, .weak .bar-fill::after { display: none; }
 
     /* ---- Мини-карта: аккуратная плашка вместо «дыры», когда карты нет ---- */
     .map-fallback, .map-lazy {
@@ -1446,7 +1441,7 @@
     .ver-btn { margin-top: 14px; }
 
     /* ---- Нижнее меню: контрастные иконки и подписи, пружинистая подсветка ---- */
-    .nav { background: rgba(14, 14, 24, .78); border-color: rgba(255, 255, 255, .1); }
+    .nav { border-color: rgba(255, 255, 255, .1); }
     .nav button { color: #8d92a8; transition: color calc(var(--anim-speed) * .875) ease; }
     .nav button span { font-size: 10px; font-weight: 700; letter-spacing: .01em; }
     .nav button svg { transition: transform calc(var(--anim-speed) * 1.25) var(--spring), color calc(var(--anim-speed) * .875) ease, filter calc(var(--anim-speed) * .875) ease; }
@@ -1471,7 +1466,13 @@
     .backdrop.theme-mountain { background: linear-gradient(180deg, rgba(123, 92, 255, 0.4), rgba(255, 61, 154, 0.3) 45%, rgba(255, 138, 61, 0.4) 70%), #07070c; }
     .backdrop.theme-vip { background: radial-gradient(circle at 50% 0%, rgba(255, 217, 74, 0.4), transparent 70%), #07070c; }
     .backdrop.theme-void { background: radial-gradient(circle at 50% 50%, rgba(123, 92, 255, 0.5), #000 70%); }
-    .backdrop.theme-admin { background: radial-gradient(circle at 50% 0%, rgba(255, 194, 26, 0.6), transparent 70%), linear-gradient(180deg, #2a1a00 0%, #07070c 100%); }
+    .backdrop.theme-admin {
+      background:
+        repeating-linear-gradient(45deg, rgba(255, 217, 74, 0.12) 0 2px, transparent 2px 12px),
+        radial-gradient(circle at 50% 0%, rgba(255, 194, 26, 0.6), transparent 70%),
+        linear-gradient(180deg, #2a1a00 0%, #07070c 100%);
+      background-size: auto, auto, 100% 100%;
+    }
 
     /* ---- Стабильный рендеринг: без глитчей стекла при скролле и переключении вкладок ---- */
     /* стекло — отдельный контекст наложения: декоративные слои с z-index:-1 (#pbg, ::before) не уходят под фон,
@@ -5060,13 +5061,11 @@
     }
 
     const GEMINI_PROMPT =
-      'Ты — нутрициолог. Проанализируй фото блюда. Верни СТРОГО JSON без markdown, без пояснений, без ```json, только объект с полями: ' +
-      '{"name": "краткое название блюда на русском", "kcal": число, "protein": число, "fat": число, "carbs": число}. ' +
-      'Оценивай порцию по размеру тарелки/приборов на фото. Если на фото несколько блюд — выбери главное. ' +
-      'Если блюдо русское/постсоветское (борщ, гречка, оливье, пельмени, плов, сырники и т.п.) — используй типичные для него КБЖУ на порцию 250–350 г. ' +
-      'Если видишь упаковку с читаемым названием/брендом — используй данные с упаковки. ' +
-      'Если на фото не еда — верни {"error": "not_food"}. ' +
-      'Все числа — целые (ккал) или с одним знаком после запятой (БЖУ в граммах).';
+      'Ты — строгий нутрициолог. Проанализируй фото. Твоя задача — распознать ТОЛЬКО ЕДУ И НАПИТКИ, готовые к употреблению. ' +
+      'Если на фото НЕ ЕДА (мебель, люди, пол, животные, техника, пустая тарелка) — верни СТРОГО JSON: {"error": "not_food"}. ' +
+      'Если на фото еда, верни СТРОГО JSON без markdown: {"name": "краткое название блюда на русском", "kcal": число, "protein": число, "fat": число, "carbs": число}. ' +
+      'Оценивай порцию по размеру тарелки/приборов. Если блюдо русское/постсоветское (борщ, гречка, плов, пельмени) — используй типичные КБЖУ на порцию 250–350 г. ' +
+      'Если видишь упаковку с названием — используй данные с упаковки. Все числа — целые (ккал) или с одним знаком после запятой (БЖУ).';
 
     // Распознавание блюда через Gemini API. Ключ — window.STRIDE_GEMINI_KEY из config.js;
     // без ключа работает как прежняя заглушка. Ошибки: BAD_PHOTO, NOT_FOOD (err.code), GEMINI_*, AbortError (таймаут)
@@ -5170,6 +5169,15 @@
 
       if (!kcal) throw new Error('GEMINI_ZERO_KCAL');
 
+      // Защита от ложных срабатываний: ищем слова целиком, чтобы не ломать "Салат Столичный" или "Половина пиццы"
+      const badWords = ['пол', 'стол', 'стена', 'рука', 'нога', 'человек', 'животное', 'собака', 'кошка', 'машина', 'техника'];
+      const safeName = name.toLowerCase().replace(/[^a-zа-яё0-9\s]/g, ''); // убираем знаки препинания
+      const words = safeName.split(/\s+/);
+      if (badWords.some(bw => words.includes(bw))) {
+        const err = new Error('NOT_FOOD');
+        err.code = 'NOT_FOOD';
+        throw err;
+      }
       return { name, kcal, protein, fat, carbs };
     }
 

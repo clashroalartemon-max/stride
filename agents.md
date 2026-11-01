@@ -1,8 +1,7 @@
 # AGENTS.md
 
-- Всё приложение находится в одном `index.html`: сначала CSS в `<style>`, затем разметка вкладок (`section.tab#tab-*`), модалки и скрипт. Сборки нет, Netlify публикует корень.
-- Состояние хранится в одном объекте `S` (localStorage `stride.v2`). Структура задаётся в `defaults()` и `normalizeState()`. Новые поля нужно добавлять в оба места. Для записи используется `save(true)`.
-- Кейсы описаны в `defaultCases()` и `normalizeCases()` рядом с `defaults()`. UI и логика находятся в блоке `// ----- Кейсы (лутбоксы) -----` после колеса фортуны, админ-редактор лежит там же.
-- Награды кейса хранятся строкой (`coins:N*w, frame:id*w`) и разбираются через `parseRewards()`. Поле `slot` в LIMITED определяет тип предмета. Лимитированные предметы в магазине не продаются, а показываются там только после получения.
-- Звуки задаются в `SOUND_DEFS` (синтез нот) и проигрываются через `playSound(name)`.
-- Код пишется на русском, комментарии короткие. Перед вставкой в innerHTML данные экранируются через `escapeHtml`. Анимации делаются через transform и opacity. Режим `.lite` отключает тяжёлые эффекты.
+- The whole app is `index.html`: one `<style>` block, the markup, and one inline script. There is no bundler.
+- Rendering rule: never use `backdrop-filter`. A global rule at the end of the stylesheet forces it off, because it caused colored stripes and ripples on iOS Safari and Android Chrome during scrolling and tab switches. Fake the "glass" look with semi-opaque backgrounds instead.
+- `.glass` cards sit on their own GPU layers (`translateZ(0)`). Don't put `position: fixed` elements inside a `.glass` card, because the transform would trap them.
+- The backdrop blobs are radial gradients, not `filter: blur()`. Keep them that way.
+- Premium shop backgrounds re-theme the whole app through `BG_TO_THEME` → `.backdrop.theme-*` classes. The VIP background (`b-vip`) maps to `theme-admin`.
