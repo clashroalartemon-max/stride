@@ -131,7 +131,7 @@
       margin: 0 auto;
       min-height: 100%;
       isolation: isolate;
-      padding: calc(env(safe-area-inset-top) + 18px) 18px calc(var(--nav-h) + env(safe-area-inset-bottom) + 28px);
+      padding: calc(env(safe-area-inset-top) + 18px) 18px 24px;
     }
     .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
     .hello small { display: block; font-size: 12px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
@@ -459,18 +459,16 @@
     .danger { color: #ff6b8b; font-weight: 700; font-size: 14px; padding: 6px 12px; border-radius: 12px; background: rgba(255, 61, 110, .1); }
 
     /* ===== Нижняя навигация ===== */
+    /* Меню — обычный блок в конце страницы (не fixed): Chrome на Android не рисует полосы при скролле */
     .nav {
-      position: fixed; z-index: 20; left: 0; right: 0; margin: 0 auto; isolation: isolate;
-      bottom: calc(env(safe-area-inset-bottom) + 12px);
+      position: relative; isolation: isolate;
       width: calc(100% - 24px); max-width: 456px; height: var(--nav-h);
+      margin: 24px auto 12px;
       display: grid; grid-template-columns: repeat(6, 1fr);
       padding: 8px; border-radius: 26px;
       background: #0e0e18 !important; border: 1px solid var(--border);
       backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
       box-shadow: 0 16px 50px rgba(0, 0, 0, .55);
-      /* iOS Safari: fixed-меню на собственном стабильном слое — без полос и ряби при скролле */
-      transform: translateZ(0); -webkit-transform: translateZ(0);
-      backface-visibility: hidden; -webkit-backface-visibility: hidden;
     }
     .nav .pill {
       position: absolute; top: 8px; bottom: 8px; left: 8px; width: calc((100% - 16px) / 6);
@@ -1483,8 +1481,7 @@
     /* То, что двигается через transform, не размывает фон под собой: шторки модалок и тосты плотные */
     .modal .sheet { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(20, 20, 32, .97); }
     .toast { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(22, 22, 34, .97); }
-    /* Слои по оси Z: контент < навигация (30) < модалки (50) < камера (55) < тосты (60) < конфетти (70) */
-    .nav { z-index: 30; }
+    /* Слои по оси Z: контент < модалки (50) < камера (55) < тосты (60) < конфетти (70) */
 
     /* =====================================================================
        СИСТЕМА АНИМАЦИЙ И ЧИСТЫЙ РЕНДЕРИНГ
@@ -1544,6 +1541,12 @@
 
     /* Жесткое отключение анимаций для навигации и вкладок */
     .nav, .nav *, .nav *::before, .nav *::after, .pill, .tab, .tab *, .tab *::before, .tab *::after {
+      transition: none !important;
+      animation: none !important;
+    }
+
+    /* Полное отключение любых анимаций для меню */
+    .nav, .nav *, .nav .pill {
       transition: none !important;
       animation: none !important;
     }
