@@ -75,6 +75,12 @@
     });
   </script>
   <style>
+        .f-field input {
+      height: 48px; padding: 0 14px; border-radius: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
+      background: var(--surface-2); border: 1px solid var(--border); outline: none; width: 100%; min-width: 0; color: var(--text);
+    }
+    .f-field input:focus { border-color: var(--cyan); }
+    .f-row.three { grid-template-columns: repeat(3, 1fr); }
     :root {
       --bg: #07070c;
       --surface: rgba(255, 255, 255, 0.055);
@@ -2047,14 +2053,13 @@
     <form class="glass sheet" id="foodForm" novalidate autocomplete="off">
       <h3 id="foodModalTitle">Добавить еду</h3>
       <p id="foodModalNote">Запись попадёт в дневник за сегодня</p>
-      <img class="food-photo" id="fPhoto" alt="Фото блюда">
       <div class="f-form">
         <label class="f-field"><span>Название блюда</span><input type="text" id="fName" maxlength="60" placeholder="Например, овсянка с бананом" enterkeyhint="next"></label>
         <div class="f-row two">
           <label class="f-field"><span>Калории, ккал</span><input type="number" id="fKcal" inputmode="decimal" min="0" max="5000" step="1" placeholder="0"></label>
           <label class="f-field"><span>Время</span><input type="time" id="fTime"></label>
         </div>
-        <div class="f-row">
+        <div class="f-row three">
           <label class="f-field"><span>Белки, г</span><input type="number" id="fProt" inputmode="decimal" min="0" max="500" step="0.1" placeholder="0"></label>
           <label class="f-field"><span>Жиры, г</span><input type="number" id="fFat" inputmode="decimal" min="0" max="500" step="0.1" placeholder="0"></label>
           <label class="f-field"><span>Углеводы, г</span><input type="number" id="fCarb" inputmode="decimal" min="0" max="500" step="0.1" placeholder="0"></label>
