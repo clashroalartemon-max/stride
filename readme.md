@@ -1,7 +1,11 @@
-# Stride
+# Stride — шагомер
 
-Stride is a PWA pedometer packed into a single `index.html`: steps, workouts, achievements, a shop with profile backgrounds, friends, and settings. It uses plain HTML/CSS/JS with Firebase and Leaflet loaded from a CDN.
+Мобильное веб-приложение (один файл `index.html`): шагомер, тренировки, дневник питания, достижения, босс, профиль с магазином и кейсами. Оптимизировано под Chrome на Android.
 
-## Run locally
+## Технологии
+- Чистые HTML/CSS/JS без сборки
+- Firebase (облако, друзья, рейтинг), Leaflet (карта), Gemini (распознавание еды по фото)
+- Хостинг: Netlify (статическая публикация корня репозитория)
 
-No build step is needed. Serve the folder with any static server, for example `npx serve .`, or run `netlify dev --port 8889`.
+## Локальный запуск
+Откройте `index.html` в браузере или запустите `netlify dev --port 8889`.

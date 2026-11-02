@@ -460,23 +460,18 @@
 
     /* ===== Нижняя навигация ===== */
     .nav {
-      position: fixed; z-index: 20; left: 0; right: 0; margin: 0 auto; isolation: isolate;
+      position: fixed; z-index: 20; left: 0; right: 0; margin: 0 auto;
       bottom: calc(env(safe-area-inset-bottom) + 12px);
       width: calc(100% - 24px); max-width: 456px; height: var(--nav-h);
       display: grid; grid-template-columns: repeat(6, 1fr);
       padding: 8px; border-radius: 26px;
       background: #0e0e18 !important; border: 1px solid var(--border);
-      backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
       box-shadow: 0 16px 50px rgba(0, 0, 0, .55);
-      /* iOS Safari: fixed-меню на собственном стабильном слое — без полос и ряби при скролле */
-      transform: translateZ(0); -webkit-transform: translateZ(0);
-      backface-visibility: hidden; -webkit-backface-visibility: hidden;
     }
     .nav .pill {
       position: absolute; top: 8px; bottom: 8px; left: 8px; width: calc((100% - 16px) / 6);
       border-radius: 19px; background: linear-gradient(135deg, rgba(198, 255, 61, .16), rgba(34, 227, 255, .12));
       border: 1px solid rgba(198, 255, 61, .25);
-      transition: transform calc(var(--anim-speed) * 1.25) var(--anim-ease);
     }
     .nav button { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--dim); transition: color calc(var(--anim-speed) * .75); }
     .nav button svg { width: 23px; height: 23px; transition: transform var(--anim-speed) var(--anim-ease); }
@@ -1451,9 +1446,8 @@
     .nav button.on svg { transform: translateY(-2px) scale(1.1); filter: drop-shadow(0 0 8px rgba(198, 255, 61, .55)); }
     .nav button:active svg { transform: scale(.88); transition-duration: calc(var(--anim-speed) * .25); }
     .nav .pill {
-      transition: transform calc(var(--anim-speed) * 1.5) cubic-bezier(.34, 1.3, .64, 1), opacity calc(var(--anim-speed) * .75);
       background: linear-gradient(135deg, rgba(198, 255, 61, .2), rgba(34, 227, 255, .14));
-      border-color: rgba(198, 255, 61, .3); box-shadow: 0 0 22px rgba(198, 255, 61, .14), inset 0 1px 0 rgba(255, 255, 255, .1);
+      border-color: rgba(198, 255, 61, .3);
     }
     @media (max-width: 360px) { .nav button span { font-size: 8.5px; } }
 
@@ -1515,7 +1509,7 @@
        .anim-fade — стекло: только opacity; .anim-in — обычные блоки и .anim-item — строки списков: подъём снизу.
        fill-mode backwards (не both), чтобы после анимации не удерживался transform и работали :active-нажатия. */
     /* Каскад отключён: на iOS Safari он давал цветные полосы и рябь при переключении вкладок */
-    .anim-in, .anim-item, .anim-fade { animation: none !important; }
+    .anim-in, .anim-item, .anim-fade { animation: none !important; transition: none !important; }
 
     /* ---- Режим экономии (html.lite): мгновенно, без keyframes, свечений и размытия ---- */
     html.lite { --anim-speed: 0s; --anim-ease: linear; --stagger: 0ms; }
@@ -1543,6 +1537,19 @@
     }
     .perm-list li span { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; font-size: 16px; background: rgba(255, 255, 255, .06); }
     .perm-note { margin-top: 12px; font-size: 12px !important; color: var(--dim) !important; }
+
+    /* Карточки и элементы, которые проезжают под меню при скролле, не создают отдельных GPU-слоёв */
+    .glass, .case-card, .case-ico, .rcard, .item {
+      will-change: auto !important;
+      backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+    }
+
+    /* Жёсткое отключение анимаций и переходов у навигации и вкладок */
+    .nav, .nav *, .nav *::before, .nav *::after,
+    .pill, .tab, .tab *, .tab *::before, .tab *::after {
+      transition: none !important;
+      animation: none !important;
+    }
   </style>
 </head>
 <body>
@@ -5873,7 +5880,6 @@
       if (name === 'admin') { adminNote(''); loadAdminUsers(); renderCasesAdmin(); }
       // мгновенно: плавная прокрутка под каскадом двигала бы всё стекло и заставляла его пересчитывать размытие
       window.scrollTo(0, 0);
-      staggerIn($('tab-' + name));
     }
     $('nav').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) switchTab(b.dataset.tab); });
 

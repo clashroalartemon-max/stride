@@ -1,7 +1,14 @@
 # AGENTS.md
 
-- The whole app is `index.html`: one `<style>` block, the markup, and one inline script. There is no bundler.
-- Rendering rule: never use `backdrop-filter`. A global rule at the end of the stylesheet forces it off, because it caused colored stripes and ripples on iOS Safari and Android Chrome during scrolling and tab switches. Fake the "glass" look with semi-opaque backgrounds instead.
-- `.glass` cards sit on their own GPU layers (`translateZ(0)`). Don't put `position: fixed` elements inside a `.glass` card, because the transform would trap them.
-- The backdrop blobs are radial gradients, not `filter: blur()`. Keep them that way.
-- Premium shop backgrounds re-theme the whole app through `BG_TO_THEME` → `.backdrop.theme-*` classes. The VIP background (`b-vip`) maps to `theme-admin`.
+## Архитектура
+Всё приложение — один файл `index.html`: `<style>` с CSS, разметка вкладок (`.tab`), нижнее меню `#nav`/`.nav`, и `<script>` с логикой (шагомер, Firebase, камера/Gemini, магазин, кейсы). Сборки нет, публикуется корень репозитория (`netlify.toml`).
+
+## Правила рендеринга (Chrome Android)
+- `.nav` — `position: fixed`, сплошной фон `#0e0e18 !important`, БЕЗ `transform: translateZ`, `backface-visibility`, `will-change`, `contain`, `isolation`, `backdrop-filter`. Отдельный GPU-слой у меню давал цветные полосы и рябь.
+- Переключение вкладок (`switchTab`) мгновенное: `staggerIn()` там не вызывается, у `.nav`, `.pill`, `.tab` и потомков в конце `<style>` стоят `transition/animation: none !important`.
+- `.glass`, `.case-card`, `.case-ico`, `.rcard`, `.item` — без `will-change` и `backdrop-filter`.
+- Фон (`.backdrop`, `.blob`, `.grain`) не упрощать — это требование владельца.
+
+## Соглашения
+- Правки точечные, файл целиком не переписывать.
+- Переопределения добавляются в конец `<style>`.
