@@ -1422,6 +1422,8 @@
     .row b { line-height: 1.3; }
     .row small { display: block; margin-top: 2px; line-height: 1.4; }
     .row:has(.nick-field), .row:has(.backup-btns) { flex-wrap: wrap; }
+    .row.goal-type-row { flex-direction: column; align-items: stretch; gap: 10px; }
+    .row.goal-type-row .seg { margin: 0; }
     .row:has(.nick-field) > div:first-child, .row:has(.backup-btns) > div:first-child { flex-basis: 100%; }
     .nick-field { flex: 1 1 100%; }
     .nick-field input { flex: 1; width: auto; height: 38px; border-radius: 12px; }
@@ -1949,6 +1951,10 @@
             <div><b>Дневная цель</b><small>шагов в день</small></div>
             <div class="stepper"><button id="goalMinus">−</button><span id="goalVal">10 000</span><button id="goalPlus">+</button></div>
           </div>
+          <div class="row goal-type-row">
+            <div><b>Цель</b><small id="goalRecInfo">Рекомендуем: 7 500 шагов</small></div>
+            <div class="seg" id="goalSeg"><div class="knob"></div><button data-goal="lose">Похудеть</button><button data-goal="keep">Поддерживать</button><button data-goal="gain">Набрать</button></div>
+          </div>
         </div>
         <div class="set-group">
           <div class="set-label"><span>📏</span>Параметры тела</div>
@@ -2320,6 +2326,8 @@
         workouts: [],
         activeWorkout: null,
         goal: 10000,
+        goalType: 'keep',            // цель по шагам: 'lose' | 'keep' | 'gain'
+        goalManual: false,           // дневная цель изменена вручную — автопересчёт отключён
         seenAch: 0,
         height: null,                // рост, см (null — не указан)
         weight: null,                // вес, кг (null — не указан)
@@ -2406,6 +2414,10 @@
       if (!Number.isFinite(s.streak.count) || s.streak.count < 0) s.streak.count = 0;
       if (typeof s.streak.lastDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s.streak.lastDate)) { s.streak.lastDate = null; s.streak.count = 0; }
       if (!Number.isFinite(s.goal) || s.goal < 1000) s.goal = d.goal;
+      const savedObj = saved && typeof saved === 'object' ? saved : {};
+      if (!['lose', 'keep', 'gain'].includes(s.goalType)) s.goalType = ['lose', 'keep', 'gain'].includes(s.foodGoal) ? s.foodGoal : 'keep';
+      // старые сохранения без флага: цель, отличная от стандартной, считается заданной вручную
+      if (typeof savedObj.goalManual !== 'boolean') s.goalManual = Number.isFinite(savedObj.goal) && savedObj.goal !== d.goal;
       if (!s.pets.includes('chicken')) s.pets.unshift('chicken');
       if (!s.pets.includes(s.petType)) s.petType = 'chicken';
       ['workoutsDone', 'foodAdded'].forEach((k) => { if (!Number.isFinite(s[k]) || s[k] < 0) s[k] = 0; });
@@ -3263,9 +3275,46 @@
       if (document.activeElement !== $('ageInput')) $('ageInput').value = S.age || '';
       $('sexSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.sex === S.sex));
       $('weightInfo').textContent = S.weight ? '≈' + (kcalFor(1000)).toFixed(0) + ' ккал на 1 000 шагов' : 'иначе ~0.04 ккал на шаг';
+      const gi = Math.max(0, GOAL_TYPES.indexOf(S.goalType));
+      $('goalSeg').querySelector('.knob').style.transform = 'translateX(' + (gi * 100) + '%)';
+      $('goalSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.goal === GOAL_TYPES[gi]));
+      $('goalRecInfo').textContent = 'Рекомендуем: ' + fmt(calcRecommendedSteps()) + ' шагов' + (S.goalManual ? ' · цель задана вручную' : '');
     }
+    // Персональная норма шагов: возраст, цель, вес и пол
+    const GOAL_TYPES = ['lose', 'keep', 'gain'];
+    function calcRecommendedSteps() {
+      // 1. Базовая норма по возрасту
+      const base = (S.age && S.age >= 60) ? 6000 : 7500;
+      // 2. Коэффициент цели
+      const goalMult = S.goalType === 'lose' ? 1.15 : (S.goalType === 'gain' ? 0.9 : 1.0);
+      // 3. Коррекция по весу и полу
+      let weightBonus = 0;
+      if (S.weight && S.weight > 90) weightBonus += 1000;
+      if (S.sex === 'm' && S.weight && S.weight > 100) weightBonus += 500;
+      // 4. Итог и округление до 500
+      const total = Math.round(((base * goalMult) + weightBonus) / 500) * 500;
+      return Math.max(3000, Math.min(20000, total)); // безопасные границы
+    }
+    // Применяет рекомендованную норму, если цель не менялась вручную
+    function applyRecommendedGoal() {
+      if (S.goalManual) return;
+      const g = calcRecommendedSteps();
+      if (g === S.goal) return;
+      S.goal = g;
+      save(); renderSettings();
+      renderLive(); renderWeek();
+      checkStreak();
+    }
+    $('goalSeg').addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      S.goalType = b.dataset.goal;
+      S.goalManual = false; // выбор цели возвращает автоматическую норму
+      save(true); renderSettings();
+      applyRecommendedGoal();
+    });
     function changeGoal(delta) {
       S.goal = Math.min(30000, Math.max(1000, S.goal + delta));
+      S.goalManual = true; // ручная цель больше не перезаписывается автоматически
       save(); renderSettings();
       renderLive(); renderWeek(); // кольцо, прогресс-бар и график недели пересчитываются сразу
       checkStreak();
@@ -3299,7 +3348,7 @@
     // Сброс только шагов: имя, скины, босс, питомец, вода, маршруты и настройки остаются
     function resetSteps() {
       if (isTracking) stopTracking();
-      const keep = ['name', 'owned', 'frame', 'bg', 'font', 'boss', 'pet', 'goal', 'height', 'weight', 'mute', 'waterHist', 'routes', 'sex', 'age', 'foodGoal', 'foodDays', 'petType', 'pets', 'petStates', 'promoOpened', 'foodAdded', 'casePending', 'caseKeys', 'bestDaySteps'];
+      const keep = ['name', 'owned', 'frame', 'bg', 'font', 'boss', 'pet', 'goal', 'goalType', 'goalManual', 'height', 'weight', 'mute', 'waterHist', 'routes', 'sex', 'age', 'foodGoal', 'foodDays', 'petType', 'pets', 'petStates', 'promoOpened', 'foodAdded', 'casePending', 'caseKeys', 'bestDaySteps'];
       const fresh = defaults();
       keep.forEach((k) => { fresh[k] = S[k]; });
       if (S.daily && S.daily.day === dayKey()) {
@@ -4239,6 +4288,7 @@
         else if (!Number.isFinite(v) || v < min || v > max) { toast('⚠️', 'Проверьте ' + label, 'Допустимо от ' + min + ' до ' + max); renderSettings(); return; }
         else S[key] = key === 'age' ? Math.round(v) : Math.round(v * 10) / 10;
         save(true); renderSettings(); renderLive();
+        if (key !== 'height') applyRecommendedGoal(); // рост на норму шагов не влияет
         if (currentTab === 'food') renderFood();
       });
       $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
@@ -4250,6 +4300,7 @@
       const b = e.target.closest('button'); if (!b) return;
       S.sex = S.sex === b.dataset.sex ? null : b.dataset.sex; // повторное нажатие снимает выбор
       save(true); renderSettings();
+      applyRecommendedGoal();
       if (currentTab === 'food') renderFood();
     });
 
@@ -5996,6 +6047,7 @@
     }
 
     function renderAll() {
+      if (!S.goalManual) S.goal = calcRecommendedSteps(); // автоматическая норма при запуске, импорте и сбросе
       renderGreeting(); renderSettings(); renderCoins(); renderLive(); renderWeek();
       renderHistory(); renderAchievements(); renderProfile(); renderShop(); renderTracking(); updateNavDot();
       renderCalibInfo(); renderRewards(); renderCases(); recoverCasePending(); renderQuests(); renderWater(); renderPet(); renderBoss(); renderStreak(); renderFriends(); renderRating();
