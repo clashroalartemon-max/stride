@@ -21,7 +21,6 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet"></noscript>
   <!-- Ключ Gemini для распознавания еды (window.STRIDE_GEMINI_KEY); без ключа — заглушка -->
   <script src="config.js" onerror="console.warn('[Stride] config.js не найден — Gemini отключён, работает заглушка распознавания')"></script>
-  <!-- Leaflet (мини-карта) подгружается динамически — см. секцию «МИНИ-КАРТА» -->
   <!-- Режим экономии и слабые устройства: классы на <html> ставятся до первой отрисовки -->
   <script>
     (function () {
@@ -134,7 +133,7 @@
       padding: calc(env(safe-area-inset-top) + 18px) 18px calc(var(--nav-h) + env(safe-area-inset-bottom) + 28px);
     }
     .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-    .hello small { display: block; font-size: 12px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
+    .hello small { display: block; font-size: 12px; color: rgba(244, 245, 251, .86); letter-spacing: .08em; text-transform: uppercase; font-weight: 800; }
     .hello h1 { font-family: var(--display); font-size: 22px; font-weight: 700; letter-spacing: -.01em; margin-top: 2px; }
     .coin-pill {
       display: flex; align-items: center; gap: 8px;
@@ -189,7 +188,7 @@
     .hero { padding: 26px 18px 22px; display: flex; flex-direction: column; align-items: center; }
     .ring-wrap { position: relative; width: 250px; height: 250px; }
     .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
-    .ring-bg { fill: none; stroke: rgba(255, 255, 255, .07); stroke-width: 18; }
+    .ring-bg { fill: none; stroke: rgba(255, 255, 255, .16); stroke-width: 18; }
     .ring-fg { fill: none; stroke: url(#ringGrad); stroke-width: 18; stroke-linecap: round; transition: stroke-dashoffset calc(var(--anim-speed) * 2.5) var(--anim-ease); filter: drop-shadow(0 0 10px rgba(34, 227, 255, .55)); will-change: stroke-dashoffset; }
     .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     .ring-center .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .14em; font-weight: 700; }
@@ -209,7 +208,7 @@
 
     .bar { width: 100%; margin-top: 22px; }
     .bar-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
-    .bar-track { height: 10px; border-radius: 99px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+    .bar-track { height: 10px; border-radius: 99px; background: rgba(255, 255, 255, .15); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); overflow: hidden; }
     .bar-fill { height: 100%; width: 0; border-radius: inherit; background: var(--grad); box-shadow: 0 0 16px rgba(198, 255, 61, .5); transition: width calc(var(--anim-speed) * 2.5) var(--anim-ease); }
 
     .btn-main {
@@ -244,39 +243,6 @@
     .wday span { font-size: 11px; color: var(--dim); font-weight: 700; }
     .wday.today span { color: var(--text); }
 
-    /* Мини-карта */
-    .map { padding: 0; overflow: hidden; }
-    .map svg { display: block; width: 100%; height: 190px; }
-    .map-route { fill: none; stroke: url(#routeGrad); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 8 10; animation: dash 1.6s linear infinite; filter: drop-shadow(0 0 6px rgba(198, 255, 61, .7)); }
-    @keyframes dash { to { stroke-dashoffset: -36; } }
-    .map-pin { animation: ping 2s ease-out infinite; transform-origin: center; transform-box: fill-box; }
-    @keyframes ping { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(2.6); opacity: 0; } }
-    .map-overlay {
-      position: absolute; left: 12px; right: 12px; bottom: 12px;
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      padding: 10px 12px; border-radius: 16px;
-      background: rgba(10, 10, 18, .88); border: 1px solid var(--border);
-    }
-    .map-overlay b { font-size: 14px; display: block; }
-    .map-overlay small { font-size: 11px; color: var(--muted); }
-    /* Leaflet-карта внутри карточки */
-    .map { isolation: isolate; }
-    .map .leaflet-map { height: 210px; background: #0d0e18; z-index: 0; }
-    .map .map-overlay { z-index: 1000; }
-    .map .leaflet-container { font-family: var(--body); background: #0d0e18; }
-    .map .leaflet-control-attribution { background: rgba(10, 10, 18, .6); color: var(--dim); font-size: 9px; border-bottom-left-radius: 8px; }
-    .map .leaflet-control-attribution a { color: var(--muted); }
-    .map-fallback { height: 210px; display: grid; place-items: center; padding: 0 24px 60px; text-align: center; color: var(--dim); font-size: 13px; }
-    .map-lazy { width: 100%; color: var(--muted); font-weight: 600; background: radial-gradient(circle at 50% 35%, rgba(198, 255, 61, .08), transparent 60%); }
-    .map-lazy b { display: block; font-size: 30px; margin-bottom: 6px; }
-    .route-line { filter: drop-shadow(0 0 6px rgba(198, 255, 61, .7)); }
-    .route-old { filter: drop-shadow(0 0 4px rgba(34, 227, 255, .5)); }
-    .me-pin { background: none; border: 0; }
-    .me-dot { position: relative; display: block; width: 18px; height: 18px; border-radius: 50%; background: var(--lime); border: 3px solid var(--bg); box-shadow: 0 0 12px var(--lime); }
-    .me-dot::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; background: rgba(198, 255, 61, .5); animation: ping 2s ease-out infinite; z-index: -1; }
-    .tag.live { background: rgba(198, 255, 61, .14); color: var(--lime); border-color: rgba(198, 255, 61, .35); }
-    .tag.ok { background: rgba(34, 227, 255, .12); color: var(--cyan); border-color: rgba(34, 227, 255, .3); }
-
     /* Виджет погоды */
     .weather { display: flex; align-items: center; gap: 14px; padding: 14px 16px; }
     .weather .wx-ico {
@@ -298,7 +264,8 @@
     .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .mode {
       padding: 18px 16px; border-radius: 22px; text-align: left;
-      background: var(--surface); border: 1px solid var(--border);
+      background: linear-gradient(var(--surface), var(--surface)) rgba(20, 20, 30, .92); border: 1px solid rgba(255, 255, 255, .18);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .06);
       transition: transform calc(var(--anim-speed) * .625) var(--anim-ease), border-color calc(var(--anim-speed) * .75), background calc(var(--anim-speed) * .75), opacity calc(var(--anim-speed) * .75);
       position: relative; overflow: hidden; isolation: isolate;
     }
@@ -309,7 +276,7 @@
     .mode::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity calc(var(--anim-speed) * .875); z-index: -1; }
     .mode[data-mode="walk"]::before { background: linear-gradient(145deg, rgba(198, 255, 61, .25), rgba(34, 227, 255, .08)); }
     .mode[data-mode="run"]::before { background: linear-gradient(145deg, rgba(255, 61, 154, .28), rgba(123, 92, 255, .1)); }
-    .mode.sel { border-color: rgba(255, 255, 255, .35); }
+    .mode.sel { border-color: rgba(255, 255, 255, .5); }
     .mode.sel::before { opacity: 1; }
     .mode .check { position: absolute; top: 14px; right: 14px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); display: grid; place-items: center; transition: all calc(var(--anim-speed) * .75); }
     .mode.sel .check { background: #fff; border-color: #fff; }
@@ -852,9 +819,8 @@
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 
     /* ===== Слабое устройство (html.weak) и режим экономии (html.lite) =====
-       weak ставится сам (железо или замер FPS при запуске) и снимает только тяжёлую графику — звуки и карта остаются.
-       lite — ручной режим экономии: то же самое плюс без звуков, карты и блокировки экрана */
-    .weak .me-dot::after { opacity: .35; }
+       weak ставится сам (железо или замер FPS при запуске) и снимает только тяжёлую графику — звуки остаются.
+       lite — ручной режим экономии: то же самое плюс без звуков и блокировки экрана */
     /* фон: вместо размытых анимированных пятен — статичные градиенты */
     .lite .blob, .weak .blob, .lite .grain, .weak .grain { display: none; }
     .lite .backdrop, .weak .backdrop {
@@ -864,22 +830,21 @@
         radial-gradient(circle at 25% 100%, rgba(43, 217, 138, .16), transparent 45%);
     }
     /* стекло без backdrop-filter (самое дорогое для GPU); плашки поверх контента — плотнее */
-    .lite .glass, .lite .coin-pill, .lite .streak-pill, .lite .map-overlay, .lite .toast, .lite .cam-x, .lite .modal .shade,
-    .weak .glass, .weak .coin-pill, .weak .streak-pill, .weak .map-overlay, .weak .toast, .weak .cam-x, .weak .modal .shade { backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .lite .glass, .lite .coin-pill, .lite .streak-pill, .lite .toast, .lite .cam-x, .lite .modal .shade,
+    .weak .glass, .weak .coin-pill, .weak .streak-pill, .weak .toast, .weak .cam-x, .weak .modal .shade { backdrop-filter: none; -webkit-backdrop-filter: none; }
     .lite .coin-pill, .lite .streak-pill, .weak .coin-pill, .weak .streak-pill { background: rgba(22, 23, 34, .92); }
-    .lite .map-overlay, .weak .map-overlay { background: rgba(10, 10, 18, .88); }
     .lite #nav, .weak #nav { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(14, 14, 22, .96); }
     .weak .glass { background: rgba(24, 24, 36, .9); box-shadow: 0 6px 18px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .06); }
     .weak .toast { background: rgba(22, 22, 34, .97); box-shadow: 0 8px 24px rgba(0, 0, 0, .5); }
     /* без свечений и фоновых бесконечных анимаций */
-    .lite .ring-fg, .lite .route-line, .lite .route-old, .lite .map-route, .lite .big-num,
-    .weak .ring-fg, .weak .route-line, .weak .route-old, .weak .map-route, .weak .big-num, .weak .boss-mon, .weak .streak-pill .fire { filter: none; }
+    .lite .ring-fg, .lite .big-num,
+    .weak .ring-fg, .weak .big-num, .weak .boss-mon, .weak .streak-pill .fire { filter: none; }
     .lite .ring-wrap.live::after, .lite .streak-pill.hot, .lite .streak-pill.hot .fire, .lite .status .dot,
-    .lite .map-route, .lite .map-pin, .lite .me-dot::after, .lite .rcard.ready .dc-ico, .lite .rcard::after,
+    .lite .rcard.ready .dc-ico, .lite .rcard::after,
     .lite .mini-wheel, .lite .pet-ava, .lite .q-claim, .lite .avatar::before, .lite .avatar::after, .lite .big-num.fn-plasma,
     .lite [class*="fr-"]::before, .lite [class*="fr-"]::after, .lite [class*="bg-"]::before, .lite [class*="bg-"]::after,
     .weak .ring-wrap.live::after, .weak .streak-pill.hot, .weak .streak-pill.hot .fire, .weak .status .dot,
-    .weak .map-route, .weak .map-pin, .weak .me-dot::after, .weak .rcard.ready .dc-ico, .weak .rcard::after,
+    .weak .rcard.ready .dc-ico, .weak .rcard::after,
     .weak .mini-wheel, .weak .pet-ava, .weak .q-claim, .weak .avatar::before, .weak .avatar::after, .weak .big-num.fn-plasma,
     .weak [class*="fr-"]::before, .weak [class*="fr-"]::after, .weak [class*="bg-"]::before, .weak [class*="bg-"]::after { animation: none !important; }
     .lite .ring-wrap.live::after, .weak .ring-wrap.live::after { box-shadow: 0 0 40px rgba(198, 255, 61, .18); }
@@ -1372,30 +1337,6 @@
     .wbar { transition: height calc(var(--anim-speed) * 2.25) var(--anim-ease); }
     .bar-fill, .q-track i, .ach .mini-track i { position: relative; overflow: hidden; }
 
-    /* ---- Мини-карта: аккуратная плашка вместо «дыры», когда карты нет ---- */
-    .map-fallback, .map-lazy {
-      width: 100%; height: 210px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-      padding: 0 28px 66px; text-align: center; color: var(--muted); font-size: 13px;
-    }
-    .map-fallback {
-      background:
-        radial-gradient(circle at 50% 36%, rgba(34, 227, 255, .12), transparent 55%),
-        linear-gradient(rgba(255, 255, 255, .035) 1px, transparent 1px) 0 0 / 28px 28px,
-        linear-gradient(90deg, rgba(255, 255, 255, .035) 1px, transparent 1px) 0 0 / 28px 28px,
-        #0d0e18;
-    }
-    .map-fallback > .map-lazy { height: 100%; padding: 0; background: none; }
-    .mf-ico {
-      width: 52px; height: 52px; border-radius: 18px; display: grid; place-items: center; font-size: 26px; margin-bottom: 8px;
-      background: linear-gradient(145deg, rgba(34, 227, 255, .2), rgba(123, 92, 255, .16)); border: 1px solid rgba(34, 227, 255, .3);
-      box-shadow: 0 8px 26px rgba(34, 227, 255, .18);
-    }
-    #mapDenied .mf-ico { background: linear-gradient(145deg, rgba(255, 61, 154, .2), rgba(255, 138, 61, .14)); border-color: rgba(255, 61, 154, .32); box-shadow: 0 8px 26px rgba(255, 61, 154, .18); }
-    .mf-load { animation: pulse 1.4s ease-in-out infinite; }
-    .mf-title { display: block; font-size: 15px; font-weight: 700; color: var(--text); }
-    .mf-sub { display: block; max-width: 270px; font-size: 12px; font-weight: 600; line-height: 1.45; color: var(--muted); }
-    .mf-cta { margin-top: 8px; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; color: var(--cyan); background: rgba(34, 227, 255, .1); }
-
     /* ---- Магазин: ровная сетка, названия в две строки, цены на одной линии ---- */
     .shop { gap: 10px; grid-auto-rows: 1fr; }
     .item { height: 100%; min-width: 0; padding: 12px 8px; gap: 8px; justify-content: flex-start; border-color: rgba(255, 255, 255, .05); }
@@ -1524,9 +1465,8 @@
     html.lite .nav { background: rgba(14, 14, 22, .98); }
     html.lite .toast, html.lite .modal .sheet { background-color: rgba(22, 22, 34, .98); }
     html.lite .modal .shade { background: rgba(0, 0, 0, .7); }
-    html.lite .map-overlay { background: rgba(10, 10, 18, .94); }
     html.lite .nav button.on svg, html.lite .boss-mon, html.lite .streak-pill.on .fire, html.lite .ai-spin::before,
-    html.lite .ring-fg, html.lite .food-ring .ring-fg, html.lite .map-route { filter: none; }
+    html.lite .ring-fg, html.lite .food-ring .ring-fg { filter: none; }
 
     /* ---- Модалка разрешений (геолокация, уведомления) ---- */
     .perm-sheet .m-ico { background: linear-gradient(145deg, rgba(34, 227, 255, .9), rgba(123, 92, 255, .9)); box-shadow: 0 0 40px rgba(34, 227, 255, .35); }
@@ -1552,10 +1492,6 @@
       transition: none !important;
       animation: none !important;
     }
-
-    /* Карта Leaflet рисуется вместе со страницей: без translate3d (L_DISABLE_3D в JS) и без will-change из leaflet.css.
-       Плитки на отдельных GPU-слоях мигали прямоугольниками при каждом переключении вкладок. */
-    .map .leaflet-container, .map .leaflet-container * { will-change: auto !important; }
 
     /* Нижнее меню рисуется одним плоским слоем. Причина «битых» прямоугольников на Android:
        движущаяся плашка .pill (transform из JS) и filter: drop-shadow у активной иконки выделялись
@@ -1625,7 +1561,6 @@
     <defs>
       <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c6ff3d"/><stop offset="1" stop-color="#22e3ff"/></linearGradient>
       <linearGradient id="foodGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c6ff3d"/><stop offset="1" stop-color="#ffc21a"/></linearGradient>
-      <linearGradient id="routeGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#22e3ff"/><stop offset="1" stop-color="#c6ff3d"/></linearGradient>
     </defs>
   </svg>
 
@@ -1732,13 +1667,6 @@
         <div class="wx-temp" id="wxTemp">—</div>
       </div>
 
-      <div class="glass map">
-        <div class="leaflet-map" id="liveMap"></div>
-        <div class="map-overlay">
-          <div><b id="mapTitle">Мини-карта маршрута</b><small id="mapSub">Ищем ваше местоположение…</small></div>
-          <button class="tag" id="mapTag" aria-label="Показать меня на карте">GPS</button>
-        </div>
-      </div>
     </section>
 
     <!-- ===== ТРЕНИРОВКИ ===== -->
@@ -1986,7 +1914,7 @@
             <button class="chip-btn" id="recalBtn">Заново</button>
           </div>
           <div class="row">
-            <div><b>Режим экономии батареи</b><small>всё мгновенно: без анимаций, размытия и свечений, звуков и блокировки экрана; карта — по нажатию</small></div>
+            <div><b>Режим экономии батареи</b><small>всё мгновенно: без анимаций, размытия и свечений, звуков и блокировки экрана</small></div>
             <button class="switch" id="liteSw" aria-label="Режим экономии батареи"></button>
           </div>
         </div>
@@ -2343,8 +2271,6 @@
         boss: { level: 1, hp: 10000, kills: 0 },
         mute: false,                 // звуки выключены
         waterHist: {},               // { 'YYYY-MM-DD': стаканов } — последние 7 дней
-        routes: [],                  // сохранённые GPS-маршруты: { start, end, dist, points: [[lat, lng], ...] }
-        curRoute: null,              // маршрут, который пишется прямо сейчас
         sex: null,                   // пол: 'm' | 'f' (null — не указан)
         age: null,                   // возраст, лет (null — не указан)
         foodGoal: 'keep',            // цель питания: 'lose' | 'keep' | 'gain'
@@ -2407,7 +2333,8 @@
       // повреждённые/устаревшие вложенные поля заменяем значениями по умолчанию
       const d = defaults();
       ['days', 'ach', 'waterHist', 'foodDays', 'petStates', 'promoOpened', 'caseKeys'].forEach((k) => { if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = d[k]; });
-      ['owned', 'workouts', 'routes', 'friends', 'friendRequests', 'pets'].forEach((k) => { if (!Array.isArray(s[k])) s[k] = d[k]; });
+      ['owned', 'workouts', 'friends', 'friendRequests', 'pets'].forEach((k) => { if (!Array.isArray(s[k])) s[k] = d[k]; });
+      delete s.routes; delete s.curRoute; // карта маршрутов удалена — старые треки не храним
       s.pet = Object.assign(d.pet, s.pet);
       s.boss = Object.assign(d.boss, s.boss);
       s.streak = Object.assign(d.streak, s.streak && typeof s.streak === 'object' ? s.streak : {});
@@ -2745,7 +2672,6 @@
         stopTracking();
       }, 8000);
 
-      startRoute();
       renderTracking();
       return true;
     }
@@ -2754,7 +2680,6 @@
       isTracking = false;
       S.lastWalkAt = Date.now();
       calibrating = false; // незавершённая калибровка не сохраняется
-      stopRoute();
       clearInterval(activeTimer); activeTimer = null;
       clearTimeout(motionCheckTimer); motionCheckTimer = null;
       clearTimeout(calibTimeout); calibTimeout = null;
@@ -3331,10 +3256,8 @@
       renderSettings();
       if (liteMode) {
         releaseWakeLock();
-        if (mapObserver) { mapObserver.disconnect(); mapObserver = null; }
-        if (!map) showMapPlaceholder();
       }
-      else { requestWakeLock(); watchMapVisibility(); }
+      else requestWakeLock();
       toast(liteMode ? '🔋' : '✨', liteMode ? 'Режим экономии включён' : 'Режим экономии выключен',
         liteMode ? 'Анимации, звуки и блокировка экрана отключены' : 'Анимации и звуки снова работают');
     });
@@ -3345,10 +3268,10 @@
       if (isTracking) { beginCalibration(); renderTracking(); toast('🎯', 'Калибровка запущена', 'Держите телефон неподвижно 2 секунды'); }
       else toast('🎯', 'Калибровка сброшена', 'Выполнится при следующем «Старте»');
     });
-    // Сброс только шагов: имя, скины, босс, питомец, вода, маршруты и настройки остаются
+    // Сброс только шагов: имя, скины, босс, питомец, вода и настройки остаются
     function resetSteps() {
       if (isTracking) stopTracking();
-      const keep = ['name', 'owned', 'frame', 'bg', 'font', 'boss', 'pet', 'goal', 'goalType', 'goalManual', 'height', 'weight', 'mute', 'waterHist', 'routes', 'sex', 'age', 'foodGoal', 'foodDays', 'petType', 'pets', 'petStates', 'promoOpened', 'foodAdded', 'casePending', 'caseKeys', 'bestDaySteps'];
+      const keep = ['name', 'owned', 'frame', 'bg', 'font', 'boss', 'pet', 'goal', 'goalType', 'goalManual', 'height', 'weight', 'mute', 'waterHist', 'sex', 'age', 'foodGoal', 'foodDays', 'petType', 'pets', 'petStates', 'promoOpened', 'foodAdded', 'casePending', 'caseKeys', 'bestDaySteps'];
       const fresh = defaults();
       keep.forEach((k) => { fresh[k] = S[k]; });
       if (S.daily && S.daily.day === dayKey()) {
@@ -3374,7 +3297,7 @@
       if (banEl) banEl.hidden = true;
       calib = null;
       setLiteMode(false);
-      S = defaults(); lastStreakDay = null; save(true); renderAll(); runWorkoutUI(); clearMapRoutes();
+      S = defaults(); lastStreakDay = null; save(true); renderAll(); runWorkoutUI();
       toast('🧹', 'Данные сброшены', 'Начинаем с чистого листа');
     }
     $('resetBtn').addEventListener('click', () => openModal({
@@ -4350,7 +4273,7 @@
       }
       if (data.goal != null && !isNum(data.goal)) return 'Неверная дневная цель';
       const objs = ['ach', 'waterHist', 'foodDays', 'pet', 'boss', 'streak'];
-      const arrs = ['owned', 'workouts', 'routes'];
+      const arrs = ['owned', 'workouts'];
       for (const k of objs) if (data[k] != null && !isObj(data[k])) return 'Неверный формат поля «' + k + '»';
       for (const k of arrs) if (data[k] != null && !Array.isArray(data[k])) return 'Неверный формат поля «' + k + '»';
       if (data.foodDays) {
@@ -4365,7 +4288,7 @@
       if (isTracking) stopTracking();
       S = normalizeState(data);
       if (!S.owned.includes('n-none')) S.owned.push('n-none');
-      save(true); renderAll(); runWorkoutUI(); clearMapRoutes();
+      save(true); renderAll(); runWorkoutUI();
       lastStreakDay = null; checkStreak();
       toast('✅', 'Копия загружена', fmt(S.total) + ' ' + plural(S.total, 'шаг', 'шага', 'шагов') + ' · ' + fmt(S.coins) + ' монет');
     }
@@ -4720,14 +4643,9 @@
     }
 
     // ================================================================
-    //  МИНИ-КАРТА (Leaflet + navigator.geolocation)
+    //  ГЕОЛОКАЦИЯ (только для погоды)
     // ================================================================
-    const MAP_TILES = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-    const MAP_DEFAULT = [55.751, 37.618]; // пока нет координат — центр Москвы
-    const ROUTE_MIN_STEP = 4;   // м: точки ближе не записываем (дрожание GPS)
-    const ROUTE_MAX_ACC = 50;   // м: точки с худшей точностью отбрасываем
-    let map = null, meMarker = null, liveLine = null, savedLine = null;
-    let routeWatch = null, lastPos = null, geoError = '', geoDenied = false;
+    let lastPos = null;
 
     function haversine(a, b) {
       const R = 6371000, rad = Math.PI / 180;
@@ -4735,229 +4653,23 @@
       const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLng / 2) ** 2;
       return 2 * R * Math.asin(Math.sqrt(h));
     }
-    function routeDist(pts) { let m = 0; for (let i = 1; i < pts.length; i++) m += haversine(pts[i - 1], pts[i]); return m; }
-
-    // Leaflet (~150 КБ) подгружается только при первой инициализации карты и не блокирует отрисовку
-    const LEAFLET_CSS = { href: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', integrity: 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=' };
-    const LEAFLET_JS = { src: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', integrity: 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=' };
-    let leafletPromise = null, mapLoading = false, mapObserver = null;
-
-    function loadLeaflet() {
-      if (typeof L !== 'undefined') return Promise.resolve();
-      if (leafletPromise) return leafletPromise;
-      // Без translate3d: иначе каждая плитка карты — свой GPU-слой, и при переключении вкладок они мигают прямоугольниками
-      window.L_DISABLE_3D = true;
-      const css = document.createElement('link');
-      css.rel = 'stylesheet'; css.href = LEAFLET_CSS.href; css.integrity = LEAFLET_CSS.integrity; css.crossOrigin = '';
-      document.head.appendChild(css);
-      leafletPromise = new Promise((resolve, reject) => {
-        const js = document.createElement('script');
-        js.src = LEAFLET_JS.src; js.integrity = LEAFLET_JS.integrity; js.crossOrigin = ''; js.async = true;
-        js.onload = resolve;
-        js.onerror = () => { leafletPromise = null; js.remove(); reject(new Error('leaflet')); };
-        document.head.appendChild(js);
-      });
-      return leafletPromise;
-    }
-
-    // Заглушка вместо карты (режим экономии): карта создаётся только по нажатию
-    function showMapPlaceholder() {
-      if (map || mapLoading) return;
-      const el = $('liveMap');
-      el.className = 'leaflet-map';
-      el.innerHTML = '<button class="map-fallback map-lazy" id="mapLazy"><span class="mf-ico">🗺️</span><b class="mf-title">Карта маршрута</b><small class="mf-sub">Нажмите, чтобы загрузить</small></button>';
-      $('mapLazy').addEventListener('click', () => ensureMap());
-    }
-
-    // Автоматическая инициализация — когда блок карты впервые оказывается на экране вкладки «Главная»
-    function watchMapVisibility() {
-      if (map || mapObserver) return;
-      if (liteMode) { showMapPlaceholder(); return; }
-      if (!('IntersectionObserver' in window)) { ensureMap(); return; }
-      mapObserver = new IntersectionObserver((entries) => {
-        if (!entries.some((e) => e.isIntersecting) || liteMode || currentTab !== 'home') return;
-        ensureMap();
-      }, { rootMargin: '200px 0px' });
-      mapObserver.observe($('liveMap'));
-    }
-
-    function ensureMap() {
-      if (map || mapLoading) return Promise.resolve();
-      if (mapObserver) { mapObserver.disconnect(); mapObserver = null; }
-      mapLoading = true;
-      const el = $('liveMap');
-      el.className = 'map-fallback';
-      el.innerHTML = '<span class="mf-ico mf-load">🗺️</span><small class="mf-sub">Загружаем карту…</small>';
-      return loadLeaflet().then(() => { mapLoading = false; el.textContent = ''; el.className = 'leaflet-map'; initMap(); })
-        .catch(() => {
-          mapLoading = false;
-          el.className = 'map-fallback';
-          el.innerHTML = '<button class="map-lazy" id="mapRetry"><span class="mf-ico">📡</span><b class="mf-title">Карта не загрузилась</b><small class="mf-sub">Проверьте подключение к интернету</small><span class="mf-cta">Повторить</span></button>';
-          $('mapRetry').addEventListener('click', () => ensureMap());
-          renderMapInfo();
-        });
-    }
-
-    function initMap() {
-      map = L.map('liveMap', { zoomControl: false, dragging: !L.Browser.mobile, scrollWheelZoom: false, fadeAnimation: false, zoomAnimation: false, markerZoomAnimation: false, trackResize: false }).setView(MAP_DEFAULT, 12);
-      L.tileLayer(MAP_TILES, { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>' }).addTo(map);
-      map.attributionControl.setPosition('topright').setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
-      savedLine = L.polyline([], { color: '#22e3ff', weight: 4, opacity: .7, dashArray: '6 10', lineCap: 'round', className: 'route-old' }).addTo(map);
-      liveLine = L.polyline([], { color: '#c6ff3d', weight: 5, opacity: .95, lineCap: 'round', lineJoin: 'round', className: 'route-line' }).addTo(map);
-      showLastRoute(true);
-      // карта появилась позже: дорисовываем текущий трек и позицию, найденные без неё
-      if (isTracking && S.curRoute) { savedLine.setLatLngs([]); liveLine.setLatLngs(S.curRoute.points); }
-      if (lastPos) placeMe(lastPos, true);
-      renderMapInfo();
-    }
-
-    // Размер карты пересчитывается только когда она видна: в скрытой вкладке она 0×0 и Leaflet выбросил бы все плитки,
-    // а при возврате они заново проявлялись бы по одной. Вызов синхронный — без кадра со сдвинутой картой.
-    function refreshMap() {
-      if (!map || currentTab !== 'home' || !$('liveMap').offsetWidth) return;
-      map.invalidateSize({ animate: false });
-    }
-    let mapResizeQueued = false;
-    window.addEventListener('resize', () => {
-      if (mapResizeQueued) return;
-      mapResizeQueued = true;
-      requestAnimationFrame(() => { mapResizeQueued = false; refreshMap(); });
-    });
-
-    function placeMe(ll, center) {
-      lastPos = ll;
-      if (!map) return;
-      if (!meMarker) {
-        meMarker = L.marker(ll, { icon: L.divIcon({ className: 'me-pin', html: '<span class="me-dot"></span>', iconSize: [18, 18], iconAnchor: [9, 9] }), keyboard: false, interactive: false }).addTo(map);
-      } else meMarker.setLatLng(ll);
-      if (center) map.setView(ll, Math.max(map.getZoom(), 16));
-    }
 
     function onGeoError(err) {
-      const denied = !!(err && err.code === 1);
-      geoError = denied ? 'Доступ к геолокации запрещён' : 'Не удалось определить местоположение';
-      geoDenied = denied;
-      showMapDenied();
-      renderMapInfo();
-      if (denied) weatherFail('Погода не работает без разрешения', true);
-      else if (!weatherShown) weatherFail(geoError.toLowerCase());
-    }
-
-    // Геолокация запрещена: вместо карты (или пустого блока) — понятная заглушка. Разрешили — карта возвращается.
-    function showMapDenied() {
-      const el = $('liveMap'), stub = $('mapDenied');
-      if (!el) return;
-      if (!geoDenied) {
-        if (stub) { stub.remove(); el.style.display = ''; refreshMap(); }
-        return;
-      }
-      if (stub) return;
-      el.style.display = 'none';
-      el.insertAdjacentHTML('afterend', '<div class="map-fallback" id="mapDenied"><span class="mf-ico">📍</span><b class="mf-title">Нет доступа к геолокации</b><small class="mf-sub">Разрешите доступ в настройках браузера, чтобы видеть маршрут</small></div>');
+      if (err && err.code === 1) weatherFail('Погода не работает без разрешения', true);
+      else if (!weatherShown) weatherFail('не удалось определить местоположение');
     }
 
     function locateOnce() {
       if (!('geolocation' in navigator)) { onGeoError(null); return; }
       navigator.geolocation.getCurrentPosition((pos) => {
-        geoError = ''; geoDenied = false; showMapDenied();
         if (!S.geoOk) { S.geoOk = true; save(); }
-        const ll = [+pos.coords.latitude.toFixed(6), +pos.coords.longitude.toFixed(6)];
-        placeMe(ll, true);
-        loadWeather(ll[0], ll[1]);
-        renderMapInfo();
+        lastPos = [+pos.coords.latitude.toFixed(6), +pos.coords.longitude.toFixed(6)];
+        loadWeather(lastPos[0], lastPos[1]);
       }, onGeoError, { enableHighAccuracy: false, timeout: 15000, maximumAge: 5 * 60000 });
     }
 
-    function startRoute() {
-      if (!('geolocation' in navigator)) { onGeoError(null); return; }
-      if (!S.curRoute) S.curRoute = { start: Date.now(), points: [] };
-      if (liveLine) liveLine.setLatLngs(S.curRoute.points);
-      if (savedLine) savedLine.setLatLngs([]);
-      if (routeWatch != null) navigator.geolocation.clearWatch(routeWatch);
-      routeWatch = navigator.geolocation.watchPosition(onRoutePos, onGeoError, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
-      renderMapInfo();
-    }
-
-    function onRoutePos(pos) {
-      geoError = '';
-      if (geoDenied) { geoDenied = false; showMapDenied(); }
-      const ll = [+pos.coords.latitude.toFixed(6), +pos.coords.longitude.toFixed(6)];
-      const first = !lastPos;
-      placeMe(ll, first);
-      if (first) loadWeather(ll[0], ll[1]);
-      const r = S.curRoute;
-      if (!r || !isTracking) return;
-      if (pos.coords.accuracy > ROUTE_MAX_ACC) { renderMapInfo(); return; }
-      const prev = r.points[r.points.length - 1];
-      if (prev && haversine(prev, ll) < ROUTE_MIN_STEP) return;
-      r.points.push(ll);
-      if (liveLine) liveLine.addLatLng(ll);
-      if (map) map.panTo(ll, { animate: true });
-      save();
-      renderMapInfo();
-    }
-
-    function stopRoute() {
-      if (routeWatch != null) { navigator.geolocation.clearWatch(routeWatch); routeWatch = null; }
-      finalizeRoute(false);
-    }
-
-    function finalizeRoute(silent) {
-      const r = S.curRoute;
-      if (!r) return;
-      S.curRoute = null;
-      if (r.points.length >= 2) {
-        const rec = { start: r.start, end: Date.now(), dist: Math.round(routeDist(r.points)), points: r.points };
-        S.routes = [rec].concat(S.routes || []).slice(0, 10);
-        const d = fmtDist(rec.dist);
-        if (!silent) toast('🗺️', 'Маршрут сохранён', d.v + ' ' + d.u + ' · ' + rec.points.length + ' ' + plural(rec.points.length, 'точка', 'точки', 'точек'));
-      }
-      save(true);
-      showLastRoute(false);
-      renderMapInfo();
-    }
-
-    // Последний сохранённый трек показываем пунктиром
-    function showLastRoute(fit) {
-      if (!map) return;
-      const last = (S.routes || [])[0];
-      liveLine.setLatLngs([]);
-      savedLine.setLatLngs(last ? last.points : []);
-      if (fit && last && last.points.length >= 2 && !lastPos) map.fitBounds(savedLine.getBounds(), { padding: [24, 24], maxZoom: 17 });
-    }
-
-    function clearMapRoutes() {
-      if (map) { liveLine.setLatLngs([]); savedLine.setLatLngs([]); }
-      renderMapInfo();
-    }
-
-    function renderMapInfo() {
-      const tag = $('mapTag'), r = S.curRoute, last = (S.routes || [])[0];
-      let title, sub, label = 'GPS', cls = 'tag' + (lastPos ? ' ok' : '');
-      if (isTracking && r) {
-        const d = fmtDist(routeDist(r.points));
-        title = 'Запись маршрута';
-        sub = geoError || (r.points.length ? d.v + ' ' + d.u + ' · ' + r.points.length + ' ' + plural(r.points.length, 'точка', 'точки', 'точек') : 'Ждём сигнал GPS…');
-        label = 'REC'; cls = 'tag live';
-      } else if (last) {
-        const d = fmtDist(last.dist);
-        title = 'Последний маршрут';
-        sub = d.v + ' ' + d.u + ' · ' + new Date(last.start).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) + ' · «Старт» — новый трек';
-      } else {
-        title = 'Мини-карта маршрута';
-        sub = geoError || (lastPos ? 'Нажмите «Старт», чтобы записать трек' : 'Ищем ваше местоположение…');
-      }
-      $('mapTitle').textContent = title;
-      $('mapSub').textContent = sub;
-      tag.textContent = label;
-      tag.className = cls;
-    }
-
-    $('mapTag').addEventListener('click', () => {
-      if (!map) ensureMap();
-      if (lastPos && map) map.setView(lastPos, 16);
-      else locateOnce();
-    });
+    // Нажатие на карточку погоды — повторный запрос местоположения
+    $('weatherCard').addEventListener('click', () => locateOnce());
 
     // ================================================================
     //  ПОГОДА (Open-Meteo, без ключей)
@@ -6021,7 +5733,8 @@
       // подсветка меню — фон самой кнопки .on (без движущейся плашки и transform), скрытые вкладки (admin) её снимают
       if (name === 'ach') { renderAchievements(); S.seenAch = Object.keys(S.ach).length; save(); updateNavDot(); }
       if (name === 'profile') { renderProfile(); renderShop(); renderSettings(); renderWaterWeek(); renderFriends(); refreshRating(); }
-      if (name === 'home') { renderWeek(); renderPet(); renderQuests(); renderWater(); refreshMap(); watchMapVisibility(); }
+      if (name === 'home') { renderWeek(); renderPet(); renderQuests(); renderWater(); }
+      document.querySelector('.hello').style.display = name === 'home' ? '' : 'none'; // приветствие — только на главной
       if (name === 'boss') renderBoss();
       if (name === 'food') renderFood();
       if (name === 'workout') renderWorkoutLive();
@@ -6063,8 +5776,8 @@
     const PERM_INFO = {
       geo: {
         cls: '', icon: '📍', title: 'Доступ к геолокации',
-        text: 'Для карты маршрута и погоды нужно разрешение на геолокацию. Разрешить?',
-        list: [['🗺️', 'Маршрут прогулки на мини-карте'], ['🌤️', 'Погода там, где вы гуляете']],
+        text: 'Для погоды нужно разрешение на геолокацию. Разрешить?',
+        list: [['🌤️', 'Погода там, где вы гуляете']],
         note: 'Координаты не покидают устройство, кроме запроса погоды'
       },
       notify: {
@@ -6130,9 +5843,9 @@
     $('permModal').addEventListener('click', (e) => { if (e.target.hasAttribute('data-perm-later')) closePerm(false); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && permCurrent) closePerm(false); });
 
-    // Геолокацию отложили: погода не висит в «загрузке», карта остаётся на месте по умолчанию
+    // Геолокацию отложили: погода не висит в «загрузке»
     function geoLater() {
-      if (!weatherShown) weatherFail('Нажмите 📍 на карте, чтобы разрешить геолокацию', true);
+      if (!weatherShown) weatherFail('Нажмите на карточку, чтобы разрешить геолокацию', true);
     }
 
     function requestNotify() {
@@ -6216,8 +5929,6 @@
     renderAll();
     try { if (localStorage.getItem(BAN_KEY)) applyBan(true); } catch (e) {}
     checkStreak();
-    if (S.curRoute) finalizeRoute(true); // трек, оборванный перезагрузкой, сохраняем
-    watchMapVisibility();
     initWeather();
     initPermissions(); // геолокация: сразу, если уже разрешена; иначе — сначала наша модалка
     if (S.activeWorkout) {
