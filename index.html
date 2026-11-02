@@ -1550,6 +1550,10 @@
       transition: none !important;
       animation: none !important;
     }
+
+    /* Карта Leaflet рисуется вместе со страницей: без translate3d (L_DISABLE_3D в JS) и без will-change из leaflet.css.
+       Плитки на отдельных GPU-слоях мигали прямоугольниками при каждом переключении вкладок. */
+    .map .leaflet-container, .map .leaflet-container * { will-change: auto !important; }
   </style>
 </head>
 <body>
@@ -4608,6 +4612,8 @@
     function loadLeaflet() {
       if (typeof L !== 'undefined') return Promise.resolve();
       if (leafletPromise) return leafletPromise;
+      // Без translate3d: иначе каждая плитка карты — свой GPU-слой, и при переключении вкладок они мигают прямоугольниками
+      window.L_DISABLE_3D = true;
       const css = document.createElement('link');
       css.rel = 'stylesheet'; css.href = LEAFLET_CSS.href; css.integrity = LEAFLET_CSS.integrity; css.crossOrigin = '';
       document.head.appendChild(css);
@@ -4660,7 +4666,7 @@
     }
 
     function initMap() {
-      map = L.map('liveMap', { zoomControl: false, dragging: !L.Browser.mobile, scrollWheelZoom: false, fadeAnimation: !liteMode && !isWeak(), zoomAnimation: !liteMode && !isWeak(), markerZoomAnimation: !liteMode && !isWeak() }).setView(MAP_DEFAULT, 12);
+      map = L.map('liveMap', { zoomControl: false, dragging: !L.Browser.mobile, scrollWheelZoom: false, fadeAnimation: false, zoomAnimation: false, markerZoomAnimation: false, trackResize: false }).setView(MAP_DEFAULT, 12);
       L.tileLayer(MAP_TILES, { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>' }).addTo(map);
       map.attributionControl.setPosition('topright').setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
       savedLine = L.polyline([], { color: '#22e3ff', weight: 4, opacity: .7, dashArray: '6 10', lineCap: 'round', className: 'route-old' }).addTo(map);
@@ -4672,7 +4678,18 @@
       renderMapInfo();
     }
 
-    function refreshMap() { if (map) setTimeout(() => map.invalidateSize(), 60); }
+    // Размер карты пересчитывается только когда она видна: в скрытой вкладке она 0×0 и Leaflet выбросил бы все плитки,
+    // а при возврате они заново проявлялись бы по одной. Вызов синхронный — без кадра со сдвинутой картой.
+    function refreshMap() {
+      if (!map || currentTab !== 'home' || !$('liveMap').offsetWidth) return;
+      map.invalidateSize({ animate: false });
+    }
+    let mapResizeQueued = false;
+    window.addEventListener('resize', () => {
+      if (mapResizeQueued) return;
+      mapResizeQueued = true;
+      requestAnimationFrame(() => { mapResizeQueued = false; refreshMap(); });
+    });
 
     function placeMe(ll, center) {
       lastPos = ll;
