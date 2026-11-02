@@ -1554,6 +1554,26 @@
     /* Карта Leaflet рисуется вместе со страницей: без translate3d (L_DISABLE_3D в JS) и без will-change из leaflet.css.
        Плитки на отдельных GPU-слоях мигали прямоугольниками при каждом переключении вкладок. */
     .map .leaflet-container, .map .leaflet-container * { will-change: auto !important; }
+
+    /* Нижнее меню рисуется одним плоским слоем. Причина «битых» прямоугольников на Android:
+       движущаяся плашка .pill (transform из JS) и filter: drop-shadow у активной иконки выделялись
+       в отдельные куски слоя меню, и при смене вкладки Chrome показывал вокруг активной кнопки
+       непрорисованные плитки (мусор из видеопамяти или контент под меню).
+       Поэтому внутри .nav нет transform, filter, will-change и движущихся элементов:
+       подсветка — фон самой кнопки .on, свечение иконки — статичный radial-gradient. */
+    .nav, .nav *, .nav *::before, .nav *::after {
+      transform: none !important; filter: none !important; will-change: auto !important;
+      backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+    }
+    .nav .pill { display: none !important; }
+    .nav button { border-radius: 19px; border: 1px solid transparent; }
+    .nav button.on {
+      background:
+        radial-gradient(closest-side at 50% 38%, rgba(198, 255, 61, .22), rgba(198, 255, 61, 0)),
+        linear-gradient(135deg, rgba(198, 255, 61, .2), rgba(34, 227, 255, .14));
+      border-color: rgba(198, 255, 61, .3);
+    }
+    .nav button.on svg { position: relative; top: -2px; color: var(--lime); }
   </style>
 </head>
 <body>
@@ -1996,7 +2016,6 @@
 
   <!-- ===== Нижняя навигация ===== -->
   <nav class="nav" id="nav">
-    <div class="pill" id="navPill"></div>
     <button class="on" data-tab="home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Главная</span>
     </button>
@@ -5885,9 +5904,7 @@
       currentTab = name;
       document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
       document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
-      const idx = TABS.indexOf(name);  // скрытые вкладки (admin) не двигают подсветку меню
-      $('navPill').style.opacity = idx < 0 ? '0' : '';
-      if (idx >= 0) $('navPill').style.transform = 'translateX(' + (idx * 100) + '%)';
+      // подсветка меню — фон самой кнопки .on (без движущейся плашки и transform), скрытые вкладки (admin) её снимают
       if (name === 'ach') { renderAchievements(); S.seenAch = Object.keys(S.ach).length; save(); updateNavDot(); }
       if (name === 'profile') { renderProfile(); renderShop(); renderSettings(); renderWaterWeek(); renderFriends(); refreshRating(); }
       if (name === 'home') { renderWeek(); renderPet(); renderQuests(); renderWater(); refreshMap(); watchMapVisibility(); }
