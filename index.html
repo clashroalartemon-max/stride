@@ -753,8 +753,6 @@
     .food-add { margin-top: 14px; }
     .food-add svg { width: 20px; height: 20px; }
     .food-manual { width: 100%; margin-top: 10px; height: 54px; }
-    .food-photo { display: none; width: 100%; height: 150px; object-fit: cover; border-radius: 18px; margin-top: 16px; border: 1px solid var(--border); }
-    .food-photo.show { display: block; }
 
    /* ===== Слабое устройство (html.weak) и режим экономии (html.lite) =====
        weak ставится сам (железо или замер FPS при запуске) и снимает только тяжёлую графику — звуки остаются.
@@ -2046,7 +2044,7 @@
   <!-- ===== Добавление еды ===== -->
   <div class="modal" id="foodModal" role="dialog" aria-modal="true" aria-labelledby="foodModalTitle">
     <div class="shade" data-food-close></div>
-    <form class="glass sheet food-sheet" id="foodForm" novalidate autocomplete="off">
+    <form class="glass sheet" id="foodForm" novalidate autocomplete="off">
       <h3 id="foodModalTitle">Добавить еду</h3>
       <p id="foodModalNote">Запись попадёт в дневник за сегодня</p>
       <img class="food-photo" id="fPhoto" alt="Фото блюда">
